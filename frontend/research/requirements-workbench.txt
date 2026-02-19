@@ -1,0 +1,9 @@
+# Research workbench (Jupyter Notebook) minimal dependencies
+jupyterlab>=4.0
+ipykernel>=6.0
+ipywidgets>=8.0
+pandas>=2.0
+matplotlib>=3.8
+
+# Keep Flask stack + backtest deps consistent with backend project.
+# Install backend requirements in /home/app/backtest/requirements.txt as base.

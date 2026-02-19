@@ -1,0 +1,2966 @@
+<template>
+  <div class="app-container">
+    <!-- Mobile notification banner -->
+    <div class="mobile-notification" v-if="isMobile && showMobileNotification">
+      <div class="notification-content">
+        <div class="notification-text">
+        <i class="notification-icon">💻</i>
+        <span>通过电脑访问网站，有更好的体验</span>
+        </div>
+        <button class="close-notification" @click="dismissMobileNotification">&times;</button>
+      </div>
+    </div>
+    
+    <!-- Data update notification banner -->
+    <transition name="fade">
+      <div class="data-update-notification" v-if="showDataUpdateNotification" :class="{ 'with-mobile-notification': isMobile && showMobileNotification }">
+        <div class="notification-content">
+          <div class="notification-text">
+            <span>交易日17:30-18:00更新网站数据</span>
+          </div>
+          <button class="close-notification" @click="dismissDataUpdateNotification">&times;</button>
+            </div>
+              </div>
+    </transition>
+    
+    <!-- Top navigation bar -->
+    <header class="top-navbar" :class="{ 'with-notification': isMobile && showMobileNotification, 'with-data-notification': showDataUpdateNotification }">
+      <div class="navbar-container">
+        <div class="nav-logo-menu-group">
+          <a href="#" class="navbar-logo" @click="handleLogoClick">
+            <img src="@/assets/logo1.jpg" alt="Site Logo" class="site-logo">
+          </a>
+          
+          <!-- Desktop navigation menu -->
+          <nav class="navbar-menu">
+            <div v-for="item in navItems" 
+                 :key="item.id" 
+                 class="nav-item"
+                 :class="{ 'active': currentMainNav === item.id }"
+                 @click="selectMainNav(item)">
+              <i :class="item.icon"></i>
+              <span>{{ item.name }}</span>
+            </div>
+          </nav>
+        </div>
+        
+        <!-- Mobile menu toggle button -->
+        <button class="mobile-toggle" @click="toggleMobileMenu" v-if="isMobile">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </div>
+    </header>
+    
+    <!-- Mobile menu -->
+    <div class="mobile-menu" v-if="showMobileMenu && isMobile"
+         :class="{
+           'with-notification': showMobileNotification,
+           'with-data-notification': showDataUpdateNotification
+         }">
+      <template v-for="item in navItems" :key="item.id">
+        <!-- Main menu item -->
+      <div class="mobile-menu-item" 
+             :class="{ 'active': currentMainNav === item.id }"
+             @click="item.hasSubmenu ? toggleMobileSubmenu(item.id) : selectMainNav(item)">
+          <div class="mobile-item-content">
+            <i :class="item.icon"></i>
+            <span>{{ item.name }}</span>
+          </div>
+          <i v-if="item.hasSubmenu" class="dropdown-arrow" 
+             :class="{ 
+               'expanded': 
+                 (item.id === 'etf' && showMobileEtfSubmenu) || 
+                 (item.id === 'stock' && showMobileStockSubmenu) || 
+                 (item.id === 'market-style' && showMobileMarketStyleSubmenu) ||
+                 (item.id === 'trading-signals' && showMobileTradingSignalsSubmenu) ||
+                 (item.id === 'experimental' && showMobileExperimentalSubmenu) ||
+                 (item.id === 'about' && showMobileAboutSubmenu)
+             }">
+          </i>
+        </div>
+        
+        <!-- ETF submenu -->
+        <div class="mobile-submenu" v-if="item.id === 'etf' && showMobileEtfSubmenu">
+          <div v-for="subItem in item.submenu" :key="subItem.id" 
+               class="mobile-menu-item sub"
+               :class="{ 'active': currentTab === subItem.id }"
+               @click="selectSubNav(subItem)">
+            <i :class="subItem.icon || 'submenu-icon'"></i>
+            <span>{{ subItem.name }}</span>
+        </div>
+      </div>
+      
+        <!-- Stock submenu -->
+        <div class="mobile-submenu" v-if="item.id === 'stock' && showMobileStockSubmenu">
+          <div v-for="subItem in item.submenu" :key="subItem.id" 
+               class="mobile-menu-item sub"
+               :class="{ 'active': currentTab === subItem.id }"
+               @click="selectSubNav(subItem)">
+            <i :class="subItem.icon || 'submenu-icon'"></i>
+            <span>{{ subItem.name }}</span>
+          </div>
+        </div>
+        
+        <!-- Market Style submenu -->
+        <div class="mobile-submenu" v-if="item.id === 'market-style' && showMobileMarketStyleSubmenu">
+          <div v-for="subItem in item.submenu" :key="subItem.id" 
+               class="mobile-menu-item sub"
+               :class="{ 'active': currentTab === subItem.id }"
+               @click="selectSubNav(subItem)">
+            <i :class="subItem.icon || 'submenu-icon'"></i>
+            <span>{{ subItem.name }}</span>
+          </div>
+        </div>
+        
+        <!-- Trading Signals submenu -->
+        <div class="mobile-submenu" v-if="item.id === 'trading-signals' && showMobileTradingSignalsSubmenu">
+          <div v-for="subItem in item.submenu" :key="subItem.id" 
+               class="mobile-menu-item sub"
+               :class="{ 'active': currentTab === subItem.id }"
+               @click="selectSubNav(subItem)">
+            <i :class="subItem.icon || 'submenu-icon'"></i>
+            <span>{{ subItem.name }}</span>
+          </div>
+        </div>
+        
+        <!-- Experimental submenu -->
+        <div class="mobile-submenu" v-if="item.id === 'experimental' && showMobileExperimentalSubmenu && isAuthenticated">
+          <div v-for="subItem in item.submenu" :key="subItem.id" 
+               class="mobile-menu-item sub"
+               :class="{ 'active': currentTab === subItem.id }"
+               @click="selectSubNav(subItem)">
+            <i :class="subItem.icon || 'submenu-icon'"></i>
+            <span>{{ subItem.name }}</span>
+          </div>
+        </div>
+
+        <!-- About submenu -->
+        <div class="mobile-submenu" v-if="item.id === 'about' && showMobileAboutSubmenu">
+          <div v-for="subItem in item.submenu" :key="subItem.id" 
+               class="mobile-menu-item sub"
+               :class="{ 'active': currentTab === subItem.id }"
+               @click="selectSubNav(subItem)">
+            <i :class="subItem.icon || 'submenu-icon'"></i>
+            <span>{{ subItem.name }}</span>
+          </div>
+        </div>
+      </template>
+      </div>
+      
+    <!-- Sidebar navigation (for desktop) -->
+    <transition name="sidebar">
+      <aside class="sidebar" v-if="showSidebar && !isMobile" 
+             :class="{ 
+               'collapsed': sidebarCollapsed, 
+               'with-notification': isMobile && showMobileNotification,
+               'with-data-notification': showDataUpdateNotification
+             }">
+        <div class="sidebar-header">
+          <div class="sidebar-title">
+            <i :class="currentNavItem ? currentNavItem.icon : ''"></i>
+            <h3>{{ currentNavItem ? currentNavItem.name : '' }}</h3>
+          </div>
+          <button class="sidebar-toggle" @click="toggleSidebar">
+            <i :class="sidebarCollapsed ? 'expand-icon' : 'collapse-icon'"></i>
+          </button>
+        </div>
+        <div class="sidebar-content">
+          <div class="sidebar-menu">
+            <div class="sidebar-item" 
+                 v-for="subItem in currentSubmenu" 
+                 :key="subItem.id"
+                 :class="{ 'active': currentTab === subItem.id }"
+                 @click="selectSubNav(subItem)">
+              <i :class="subItem.icon || 'submenu-icon'"></i>
+              <span>{{ subItem.name }}</span>
+          </div>
+          </div>
+        </div>
+      </aside>
+    </transition>
+    
+    <!-- Main content area -->
+    <div class="main-content" :class="mainContentClass">
+      <div class="content-container">
+        <HomePage v-if="currentTab === 'home'" @navigate="handleHomeNavigation" :isDarkMode="isDarkMode" @toggle-theme="toggleTheme" />
+        <ETFDaySummary v-if="currentTab === 'etf-day-summary'" :isDarkMode="isDarkMode" />
+        <StrategyData v-if="currentTab === 'etf'" :isDarkMode="isDarkMode" />
+        <DynamicMomentum v-if="currentTab === 'dynamic-mom'" />
+        <SmallCapData v-if="currentTab === 'small'" />
+        <NngCapData v-if="currentTab === 'nng'" />
+        <RetailSentiment v-if="currentTab === 'retail-sentiment'" />
+        <MarketStyle v-if="currentTab === 'market-style'" />
+        <MarketHeatMap v-if="currentTab === 'market-heatmap'" :isDarkMode="isDarkMode" />
+        <VolumeHeatMap v-if="currentTab === 'volume-heatmap'" :isDarkMode="isDarkMode" />
+        <ETFScreen v-if="currentTab === 'scan'" />
+        <SpecTrendStrategy v-if="currentTab === 'spec-trend'" :isDarkMode="isDarkMode" />
+        <AIInsight v-if="currentTab === 'ai-insight'" />
+        <ExperimentalFeatures v-if="currentTab === 'experimental' || currentTab === 'adjustment' || currentTab === 'daily-clear' || currentTab === 'etf-premium' || currentTab === 'trend-signal' || currentTab === 'overbuy-insight' || currentTab === 'position-adjustment' || currentTab === 'learning-articles' || currentTab === 'learning-article-detail'" @navigate="handleExperimentalNavigation" :isDarkMode="isDarkMode" />
+        <About v-if="currentTab === 'about'" :isAuthenticated="isAuthenticated" />
+        <AboutArticles v-if="currentTab === 'about-articles'" />
+        <AdPage v-if="currentTab === 'ad'" />
+      </div>
+    </div>
+
+
+
+
+
+
+    <!-- Floating QR Code Button -->
+    <div class="floating-qr" :class="{ 'expanded': showQrCode }">
+      <div class="qr-toggle" @click="toggleQrCode">
+        <i class="wechat-icon"></i>
+      </div>
+      <div class="qr-content" v-show="showQrCode">
+        <div class="qr-header">
+          <span>扫码关注</span>
+          <button class="close-btn" @click="toggleQrCode">&times;</button>
+        </div>
+        <div class="qr-body">
+          <img :src="qrCode" alt="QR Code" class="qr-image" />
+          <img :src="qrInfoCode" alt="QR Info Code" class="qr-info-image" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Floating Theme Toggle Button - Positioned below navbar (80px top) and aligned with QR code (right 30px) -->
+    <ThemeToggleButton 
+      :isDarkMode="isDarkMode" 
+      @toggle="toggleTheme" 
+      style="top: 120px; bottom: auto; right: 30px; z-index: 1001;" 
+    />
+  </div>
+</template>
+
+<script>
+import StrategyData from './components/StrategyData.vue';
+import SmallCapData from './components/SmallCapData.vue';
+import NngCapData from './components/NngCapData.vue';
+import ETFScreen from './components/ETFScreen.vue';
+import ETFDaySummary from './components/ETFDaySummary.vue';
+import HomePage from './components/HomePage.vue';
+import RetailSentiment from './components/RetailSentiment.vue';
+import MarketStyle from './components/MarketStyle.vue';
+import AIInsight from './components/AIInsight.vue';
+import MarketHeatMap from './components/MarketHeatMap.vue';
+import VolumeHeatMap from './components/VolumeHeatMap.vue';
+import About from './components/About.vue';
+import AboutArticles from './components/AboutArticles.vue';
+import AdPage from './components/AdPage.vue';
+import ExperimentalFeatures from './components/ExperimentalFeatures.vue';
+import DynamicMomentum from './components/DynamicMomentum.vue';
+import SpecTrendStrategy from './components/SpecTrendStrategy.vue';
+import ThemeToggleButton from './components/ThemeToggleButton.vue';
+import QrCode from '@/assets/qr.jpg';
+import QrInfoCode from '@/assets/qr_info.jpg';
+
+export default {
+  name: 'App',
+  components: {
+    StrategyData,
+    SmallCapData,
+    NngCapData,
+    ETFScreen,
+    ETFDaySummary,
+    HomePage,
+    RetailSentiment,
+    MarketStyle,
+    AIInsight,
+    MarketHeatMap,
+    VolumeHeatMap,
+    About,
+    AboutArticles,
+    AdPage,
+    ExperimentalFeatures,
+    DynamicMomentum,
+    SpecTrendStrategy,
+    ThemeToggleButton
+  },
+  data() {
+    return {
+      currentTab: 'home',
+      currentMainNav: 'home',
+      isAuthenticated: false,
+      qrCode: QrCode,
+      qrInfoCode: QrInfoCode,
+      showEtfSubmenu: false,
+      showStockSubmenu: false,
+      showMarketStyleSubmenu: false,
+      showMobileEtfSubmenu: false,
+      showMobileStockSubmenu: false,
+      showMobileMarketStyleSubmenu: false,
+      showMobileTradingSignalsSubmenu: false,
+      showMobileExperimentalSubmenu: false,
+      showMobileAboutSubmenu: false,
+      showQrCode: false,
+      showMobileNotification: true,
+      showDataUpdateNotification: true,
+      showSidebar: false,
+      sidebarCollapsed: false,
+      showMobileMenu: false,
+      isMobile: false,
+      isDarkMode: false,
+
+      navItems: [
+        {
+          id: 'home',
+          name: '主页',
+          icon: 'home-icon',
+          hasSubmenu: false
+        },
+        {
+          id: 'etf',
+          name: 'ETF策略',
+          icon: 'etf-icon',
+          hasSubmenu: true,
+          submenu: [
+            { id: 'etf-day-summary', name: 'ETF今日全景', icon: 'overview-icon' },
+            { id: 'etf', name: 'ETF动量策略', icon: 'chart-line-icon' },
+            { id: 'scan', name: 'ETF行情扫描', icon: 'scan-icon' },
+            { id: 'dynamic-mom', name: 'ETF动态动量', icon: 'trend-icon' },
+            { id: 'spec-trend', name: 'ETF趋势策略', icon: 'spec-trend-icon' }
+          ]
+        },
+        {
+          id: 'stock',
+          name: '股票策略',
+          icon: 'stock-icon',
+          hasSubmenu: true,
+          submenu: [
+            { id: 'small', name: '大妈小市值策略', icon: 'strategy-icon' },
+            { id: 'nng', name: '国九条小市值策略', icon: 'chart-line-icon' }
+          ]
+        },
+        {
+          id: 'market-style',
+          name: '市场风格',
+          icon: 'style-icon',
+          hasSubmenu: true,
+          submenu: [
+            { id: 'retail-sentiment', name: '散户情绪洞察', icon: 'sentiment-icon' },
+            { id: 'market-style', name: '风格判断', icon: 'trend-icon' },
+            { id: 'market-heatmap', name: '价格热力图', icon: 'heatmap-icon' },
+            { id: 'volume-heatmap', name: '交易量热力图', icon: 'volume-icon' }
+          ]
+        },
+        {
+          id: 'experimental',
+          name: '实验功能',
+          icon: 'experimental-icon',
+          hasSubmenu: true,
+          submenu: [
+            { id: 'daily-clear', name: '每日数据清算', icon: 'chart-line-icon' },
+            { id: 'etf-premium', name: 'ETF优质动量', icon: 'star-icon' },
+            { id: 'adjustment', name: '明日调仓建议', icon: 'recommendation-icon' },
+            { id: 'trend-signal', name: 'ETF趋势信号', icon: 'signal-icon' },
+            { id: 'overbuy-insight', name: 'ETF超买情况', icon: 'insight-icon' },
+            { id: 'learning-articles', name: '持续学习', icon: 'learning-icon' }
+          ]
+        },
+        {
+          id: 'about',
+          name: '关于',
+          icon: 'about-icon',
+          hasSubmenu: true,
+          submenu: [
+            { id: 'about', name: '关于', icon: 'about-info-icon' },
+            { id: 'about-articles', name: '微信公众号精选', icon: 'about-article-icon' },
+            { id: 'ad', name: '广告', icon: 'ad2-icon' }
+          ]
+        }
+      ]
+    }
+  },
+  computed: {
+
+    isEtfTabActive() {
+      return ['etf-day-summary', 'etf', 'scan', 'dynamic-mom', 'spec-trend'].includes(this.currentTab);
+    },
+    isStockTabActive() {
+      return ['small'].includes(this.currentTab);
+    },
+    isMarketStyleTabActive() {
+      return ['retail-sentiment', 'market-style', 'market-heatmap', 'volume-heatmap'].includes(this.currentTab);
+    },
+    currentNavItem() {
+      return this.navItems.find(item => item.id === this.currentMainNav) || null;
+    },
+    currentSubmenu() {
+      const navItem = this.currentNavItem;
+      return navItem && navItem.hasSubmenu ? navItem.submenu : [];
+    },
+    mainContentClass() {
+      return {
+        'with-notification': this.isMobile && this.showMobileNotification,
+        'with-data-notification': this.showDataUpdateNotification,
+        'with-sidebar': this.showSidebar && !this.isMobile,
+        'sidebar-collapsed': this.sidebarCollapsed && !this.isMobile
+      };
+    }
+  },
+  methods: {
+    switchTab(tab) {
+      this.currentTab = tab;
+      // Find the main navigation item that contains this tab
+      const mainNav = this.navItems.find(item => {
+        if (item.hasSubmenu) {
+          return item.submenu.some(subitem => subitem.id === tab);
+        }
+        return item.id === tab;
+      });
+      
+      if (mainNav) {
+        this.currentMainNav = mainNav.id;
+        this.showSidebar = mainNav.hasSubmenu;
+      }
+    },
+    toggleTheme() {
+      // Toggle state first
+      this.isDarkMode = !this.isDarkMode;
+      
+      // Toggle body class based on new state
+      if (this.isDarkMode) {
+        document.body.classList.add('dark-mode');
+        localStorage.setItem('darkMode', 'true');
+      } else {
+        document.body.classList.remove('dark-mode');
+        localStorage.setItem('darkMode', 'false');
+      }
+    },
+    switchTabMobile(tab) {
+      this.currentTab = tab;
+      this.showMobileMenu = false;
+      this.showMobileEtfSubmenu = false;
+      this.showMobileStockSubmenu = false;
+      this.showMobileMarketStyleSubmenu = false;
+      this.showMobileTradingSignalsSubmenu = false;
+      this.showMobileExperimentalSubmenu = false;
+      this.showMobileAboutSubmenu = false;
+    },
+    toggleSubmenu(menu) {
+      if (menu === 'etf') {
+        this.showEtfSubmenu = !this.showEtfSubmenu;
+        this.showStockSubmenu = false;
+        this.showMarketStyleSubmenu = false;
+      } else if (menu === 'stock') {
+        this.showStockSubmenu = !this.showStockSubmenu;
+        this.showEtfSubmenu = false;
+        this.showMarketStyleSubmenu = false;
+      } else if (menu === 'market-style') {
+        this.showMarketStyleSubmenu = !this.showMarketStyleSubmenu;
+        this.showEtfSubmenu = false;
+        this.showStockSubmenu = false;
+      }
+    },
+    selectMainNav(navItem) {
+      this.currentMainNav = navItem.id;
+      
+      if (!navItem.hasSubmenu) {
+        this.currentTab = navItem.id;
+        this.showSidebar = false;
+      } else {
+        // If has submenu, show the first item by default
+        if (navItem.submenu && navItem.submenu.length > 0) {
+          // 对于试验功能，检查是否已登录
+          if (navItem.id === 'experimental') {
+            // 检查是否已登录
+            const token = localStorage.getItem('token');
+            if (token) {
+              // 已登录，直接跳转到第一个子菜单
+              this.currentTab = navItem.submenu[0].id;
+              this.showSidebar = true;
+            } else {
+              // 未登录，显示登录界面
+              this.currentTab = 'experimental';
+              this.showSidebar = false;
+            }
+          } else {
+            this.currentTab = navItem.submenu[0].id;
+            this.showSidebar = true;
+          }
+        }
+      }
+      
+      // Close mobile menu if open
+      this.showMobileMenu = false;
+    },
+    selectSubNav(subItem) {
+      this.currentTab = subItem.id;
+      // 如果是试验功能的子菜单，确保侧边栏显示
+      if (this.currentMainNav === 'experimental') {
+        this.showSidebar = true;
+      }
+      // Close mobile menu when submenu item is clicked
+      if (this.isMobile) {
+        this.showMobileMenu = false;
+        this.showMobileEtfSubmenu = false;
+        this.showMobileStockSubmenu = false;
+        this.showMobileMarketStyleSubmenu = false;
+        this.showMobileTradingSignalsSubmenu = false;
+        this.showMobileExperimentalSubmenu = false;
+        this.showMobileAboutSubmenu = false;
+      }
+    },
+    toggleSidebar() {
+      this.sidebarCollapsed = !this.sidebarCollapsed;
+    },
+    toggleMobileMenu() {
+      this.showMobileMenu = !this.showMobileMenu;
+    },
+    toggleMobileSubmenu(menu) {
+      if (menu === 'etf') {
+        this.showMobileEtfSubmenu = !this.showMobileEtfSubmenu;
+        this.showMobileStockSubmenu = false;
+        this.showMobileMarketStyleSubmenu = false;
+        this.showMobileTradingSignalsSubmenu = false;
+        this.showMobileExperimentalSubmenu = false;
+      } else if (menu === 'stock') {
+        this.showMobileStockSubmenu = !this.showMobileStockSubmenu;
+        this.showMobileEtfSubmenu = false;
+        this.showMobileMarketStyleSubmenu = false;
+        this.showMobileTradingSignalsSubmenu = false;
+        this.showMobileExperimentalSubmenu = false;
+      } else if (menu === 'market-style') {
+        this.showMobileMarketStyleSubmenu = !this.showMobileMarketStyleSubmenu;
+        this.showMobileEtfSubmenu = false;
+        this.showMobileStockSubmenu = false;
+        this.showMobileTradingSignalsSubmenu = false;
+        this.showMobileExperimentalSubmenu = false;
+      } else if (menu === 'trading-signals') {
+        this.showMobileTradingSignalsSubmenu = !this.showMobileTradingSignalsSubmenu;
+        this.showMobileEtfSubmenu = false;
+        this.showMobileStockSubmenu = false;
+        this.showMobileMarketStyleSubmenu = false;
+        this.showMobileExperimentalSubmenu = false;
+      } else if (menu === 'experimental') {
+        // 移动端"实验功能"点击逻辑
+        this.currentMainNav = 'experimental';
+        if (!this.isAuthenticated) {
+          // 未登录：关闭移动菜单并进入登录页，避免遮挡
+          this.currentTab = 'experimental';
+          this.showMobileExperimentalSubmenu = false;
+          this.showMobileMenu = false;
+          return;
+        }
+        // 已登录：展开子菜单，若当前仍为 experimental，预设到首个子页避免空白
+        this.showMobileExperimentalSubmenu = !this.showMobileExperimentalSubmenu;
+        this.showMobileEtfSubmenu = false;
+        this.showMobileStockSubmenu = false;
+        this.showMobileMarketStyleSubmenu = false;
+        this.showMobileTradingSignalsSubmenu = false;
+        if (this.currentTab === 'experimental') {
+          const exp = this.navItems.find(i => i.id === 'experimental');
+          if (exp && exp.submenu && exp.submenu.length) {
+            this.currentTab = exp.submenu[0].id;
+          }
+        }
+      } else if (menu === 'about') {
+        this.showMobileAboutSubmenu = !this.showMobileAboutSubmenu;
+        this.showMobileEtfSubmenu = false;
+        this.showMobileStockSubmenu = false;
+        this.showMobileMarketStyleSubmenu = false;
+        this.showMobileTradingSignalsSubmenu = false;
+        this.showMobileExperimentalSubmenu = false;
+      }
+    },
+    closeAllDropdowns() {
+      this.showEtfSubmenu = false;
+      this.showStockSubmenu = false;
+      this.showMarketStyleSubmenu = false;
+    },
+    handleHomeNavigation(page) {
+      switch(page) {
+        case 'etf-strategy':
+          this.switchTab('etf');
+          break;
+        case 'small-cap':
+          this.switchTab('small');
+          break;
+        case 'etf-screen':
+          this.switchTab('scan');
+          break;
+        case 'market-style':
+          this.switchTab('market-style');
+          break;
+        case 'ai-insight':
+          this.currentTab = 'ai-insight';
+          this.currentMainNav = 'home';
+          this.showSidebar = false;
+          break;
+        case 'adjustment':
+          this.switchTab('adjustment');
+          break;
+        default:
+          this.switchTab('home');
+      }
+    },
+    handleExperimentalNavigation(page) {
+      this.currentTab = page;
+      this.currentMainNav = 'experimental';
+      // 侧边栏的显示由 ExperimentalFeatures 组件控制
+    },
+    checkMobileView() {
+      this.isMobile = window.innerWidth <= 768;
+      
+      // Adjust layout based on mobile view and notification status
+      if (!this.isMobile) {
+        this.showMobileMenu = false;
+      }
+    },
+    handleClickOutside(event) {
+      // Close dropdowns when clicking outside
+      const dropdowns = document.querySelectorAll('.dropdown');
+      let clickedOutside = true;
+      
+      dropdowns.forEach(dropdown => {
+        if (dropdown.contains(event.target)) {
+          clickedOutside = false;
+        }
+      });
+      
+      if (clickedOutside) {
+        this.closeAllDropdowns();
+      }
+    },
+    toggleQrCode() {
+      this.showQrCode = !this.showQrCode;
+    },
+    dismissMobileNotification(event) {
+      // Prevent event propagation
+      if (event) {
+        event.stopPropagation();
+      }
+      
+      console.log('Dismissing mobile notification');
+      this.showMobileNotification = false;
+      // Save preference in localStorage to not show again in this session
+      localStorage.setItem('dismissedMobileNotification', 'true');
+    },
+    dismissDataUpdateNotification(event) {
+      // Prevent event propagation
+      if (event) {
+        event.stopPropagation();
+      }
+      
+      console.log('Dismissing data update notification');
+      this.showDataUpdateNotification = false;
+      // Save preference in localStorage to not show again for 24 hours
+      localStorage.setItem('dismissedDataUpdateNotification', Date.now().toString());
+    },
+    setupAutoHideDataNotification() {
+      // Auto-hide the notification after 7 seconds
+      setTimeout(() => {
+        this.showDataUpdateNotification = false;
+      }, 7000);
+    },
+
+    checkAuth() {
+      const token = localStorage.getItem('token');
+      this.isAuthenticated = !!token;
+      
+      // 如果已登录，设置axios默认请求头并隐藏登录页面
+      if (token) {
+    
+        import('@/utils/axios').then(module => {
+          const axiosInstance = module.default;
+          axiosInstance.defaults.headers.common['Authorization'] = token;
+        });
+      }
+    },
+
+    handleNavigateToAbout() {
+      // 切换到关于页面
+      console.log('Navigating to about page...');
+      this.currentTab = 'about';
+      this.currentMainNav = 'about';
+      console.log('Current tab set to:', this.currentTab);
+      console.log('isAuthenticated:', this.isAuthenticated);
+    },
+
+    handleLogoClick(event) {
+      event.preventDefault();
+      if (!this.isAuthenticated) {
+        // 未登录用户点击logo，返回登录页
+        this.currentTab = 'home';
+        this.currentMainNav = 'home';
+      }
+    },
+
+    handleBackToLogin() {
+      // 从关于页面返回主页
+      this.currentTab = 'home';
+      this.currentMainNav = 'home';
+    }
+  },
+  mounted() {
+    // Check authentication
+    this.checkAuth();
+    
+    // Restore dark mode state
+    const savedDarkMode = localStorage.getItem('darkMode');
+    if (savedDarkMode === 'true') {
+      this.isDarkMode = true;
+      document.body.classList.add('dark-mode');
+    }
+    
+    // Check if notifications were previously dismissed
+    const dismissedMobileNotification = localStorage.getItem('dismissedMobileNotification');
+    if (dismissedMobileNotification === 'true') {
+      this.showMobileNotification = false;
+    }
+    
+    // Check if data update notification was dismissed in the last 24 hours
+    const dismissedDataUpdateNotification = localStorage.getItem('dismissedDataUpdateNotification');
+    if (dismissedDataUpdateNotification) {
+      const dismissedTime = parseInt(dismissedDataUpdateNotification);
+      const currentTime = Date.now();
+      const hoursSinceDismissed = (currentTime - dismissedTime) / (1000 * 60 * 60);
+      
+      // If dismissed less than 24 hours ago, don't show
+      if (hoursSinceDismissed < 24) {
+        this.showDataUpdateNotification = false;
+      }
+    }
+    
+    this.checkMobileView();
+    window.addEventListener('resize', this.checkMobileView);
+    document.addEventListener('click', this.handleClickOutside);
+    
+    // Set up auto-hide for data update notification
+    if (this.showDataUpdateNotification) {
+      this.setupAutoHideDataNotification();
+    }
+    
+    // Initialize the current main navigation and sidebar state
+    const currentNavItem = this.navItems.find(item => item.id === this.currentTab);
+    if (currentNavItem) {
+      this.currentMainNav = currentNavItem.id;
+      this.showSidebar = currentNavItem.hasSubmenu && !this.isMobile;
+    } else {
+      this.showSidebar = false;
+    }
+  },
+  beforeUnmount() {
+    window.removeEventListener('resize', this.checkMobileView);
+    document.removeEventListener('click', this.handleClickOutside);
+  }
+}
+</script>
+
+<style>
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  min-width: 320px;
+  background-color: #f5f7fa;
+  min-height: 100vh;
+}
+
+#app {
+  font-family: Avenir, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: #2c3e50;
+  min-height: 100vh;
+  width: 100%;
+}
+
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  position: relative;
+}
+
+/* Top Navigation Bar Styles */
+.top-navbar {
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  z-index: 1000;
+  padding-top: 8px;
+  transition: top 0.3s ease;
+}
+
+.top-navbar.with-notification {
+  top: 40px;
+}
+
+.top-navbar.with-data-notification {
+  top: 30px;
+  transition: top 0.3s ease;
+}
+
+.top-navbar.with-notification.with-data-notification {
+  top: 70px;
+  transition: top 0.3s ease;
+}
+
+.top-navbar.with-notification.with-data-notification {
+  top: 70px; /* 40px mobile notification + 30px data notification */
+}
+
+.navbar-container {
+  max-width: 1200px;
+  padding: 0 20px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: center;
+  height: 100%;
+}
+
+.nav-logo-menu-group {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex: 1;
+  justify-content: center;
+  max-width: 1000px;
+  height: 100%;
+}
+
+.navbar-logo {
+  margin-right: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+}
+
+.site-logo {
+  height: 36px;
+  width: auto;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.navbar-menu {
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+.nav-item {
+  padding: 0 16px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.nav-item:hover {
+  color: #409EFF;
+  background-color: rgba(64, 158, 255, 0.05);
+}
+
+.nav-item.active {
+  color: #409EFF;
+}
+
+.nav-item.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: #409EFF;
+  border-radius: 1px;
+}
+
+.nav-item i {
+  width: 20px;
+  height: 20px;
+  margin-right: 8px;
+  display: inline-block;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  flex-shrink: 0;
+}
+
+/* Sidebar Styles */
+.sidebar {
+  position: fixed;
+  top: 64px;
+  left: 0;
+  bottom: 0;
+  width: 240px;
+  background: #fff;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+  z-index: 999;
+  transition: top 0.3s ease, width 0.3s ease, transform 0.3s ease;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar.with-notification {
+  top: 104px;
+}
+
+.sidebar.with-data-notification {
+  top: 94px;
+}
+
+.sidebar.with-notification.with-data-notification {
+  top: 134px;
+}
+
+.sidebar.collapsed {
+  width: 60px;
+}
+
+.sidebar-header {
+  padding: 16px;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 60px;
+  position: relative;
+}
+
+.sidebar-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  margin-right: 32px;
+  }
+
+.sidebar-title i {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.sidebar-title h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 500;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-toggle {
+  background: none;
+  border: none;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #606266;
+  padding: 0;
+  transition: all 0.3s ease;
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  background-color: #f5f7fa;
+  border-radius: 4px;
+}
+
+.sidebar-toggle:hover {
+  color: #409EFF;
+  background-color: #ecf5ff;
+}
+
+.sidebar-toggle .collapse-icon {
+  width: 20px;
+  height: 20px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M11 19l-7-7 7-7m8 14l-7-7 7-7'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  display: inline-block;
+  opacity: 0.8;
+  transition: opacity 0.3s ease;
+}
+
+.sidebar-toggle .expand-icon {
+  width: 20px;
+  height: 20px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M13 5l7 7-7 7M5 5l7 7-7 7'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  display: inline-block;
+  opacity: 0.8;
+  transition: opacity 0.3s ease;
+}
+
+.sidebar-toggle:hover .collapse-icon,
+.sidebar-toggle:hover .expand-icon {
+  opacity: 1;
+}
+
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.sidebar-menu {
+  padding: 8px 0;
+}
+
+.sidebar-item {
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  color: #606266;
+}
+
+.sidebar-item:hover {
+  background-color: rgba(64, 158, 255, 0.05);
+  color: #409EFF;
+}
+
+.sidebar-item.active {
+  background-color: rgba(64, 158, 255, 0.1);
+  color: #409EFF;
+  font-weight: 500;
+}
+
+.sidebar-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background-color: #409EFF;
+}
+
+.sidebar-item i {
+  width: 18px;
+  height: 18px;
+  margin-right: 8px;
+  opacity: 0.8;
+  display: inline-block;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.sidebar-item:hover i {
+  opacity: 1;
+}
+
+.sidebar.collapsed .sidebar-title h3,
+.sidebar.collapsed .sidebar-item span {
+  display: none;
+}
+
+.sidebar.collapsed .sidebar-item {
+  padding: 12px;
+  justify-content: center;
+}
+
+.sidebar.collapsed .sidebar-item i {
+  margin-right: 0;
+  width: 20px;
+  height: 20px;
+  }
+
+/* Sidebar animation */
+.sidebar-enter-active,
+.sidebar-leave-active {
+  transition: transform 0.3s ease;
+}
+
+.sidebar-enter-from,
+.sidebar-leave-to {
+  transform: translateX(-100%);
+}
+
+/* Main Content Styles */
+.main-content {
+  flex: 1;
+  margin-top: 64px;
+  padding: 20px;
+  box-sizing: border-box;
+  min-height: calc(100vh - 64px - 120px);
+  background-color: #f5f7fa;
+  overflow-x: hidden;
+  transition: margin 0.3s ease, width 0.3s ease;
+  width: 100%;
+  margin-left: 0;
+}
+
+.main-content.with-notification {
+  margin-top: 104px;
+}
+
+.main-content.with-data-notification {
+  margin-top: 94px; /* 64px navbar + 30px data notification */
+}
+
+.main-content.with-notification.with-data-notification {
+  margin-top: 134px; /* 64px navbar + 40px mobile notification + 30px data notification */
+}
+
+.main-content.with-sidebar {
+  margin-left: 240px;
+  width: calc(100% - 240px);
+}
+
+.main-content.sidebar-collapsed {
+  margin-left: 60px;
+  width: calc(100% - 60px);
+}
+
+.content-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* Footer Styles */
+.site-footer {
+  background-color: #fff;
+  padding: 20px 0;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.footer-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.footer-info {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ai-tech-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: linear-gradient(to right, #e9f5ff, #ffffff);
+  border-radius: 8px;
+  border-left: 3px solid #409EFF;
+}
+
+.footer-qr {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.qr-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.qr-image {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.qr-info {
+  width: 120px;
+  height: 80px;
+  object-fit: contain;
+  background-color: white;
+  padding: 3px;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.qr-text {
+  font-size: 12px;
+  color: #606266;
+  text-align: center;
+}
+
+/* Icon Styles */
+.home-icon {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='currentColor'%3E%3Cpath d='M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z'/%3E%3C/svg%3E");
+}
+
+.etf-icon {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='currentColor'%3E%3Cpath d='M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H5v-2h7v2zm7-4H5v-2h14v2zm0-4H5V7h14v2z'/%3E%3C/svg%3E");
+}
+
+.stock-icon {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='currentColor'%3E%3Cpath d='M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z'/%3E%3C/svg%3E");
+}
+
+.style-icon {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z'%3E%3C/path%3E%3C/svg%3E");
+}
+
+.ai-insight-icon {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z'%3E%3C/path%3E%3C/svg%3E");
+}
+
+.signal-icon {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z'%3E%3C/path%3E%3C/svg%3E");
+}
+
+.recommendation-icon {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'%3E%3C/path%3E%3C/svg%3E");
+}
+
+.about-icon {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'%3E%3C/path%3E%3C/svg%3E");
+}
+
+.about-info-icon {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M12 8c.828 0 1.5-.672 1.5-1.5S12.828 5 12 5s-1.5.672-1.5 1.5S11.172 8 12 8zm0 3v8m-9-4a9 9 0 1118 0 9 9 0 01-18 0z'%3E%3C/path%3E%3C/svg%3E");
+}
+
+.about-article-icon {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M7 7h10M7 11h6m-6 4h8m-2 4H7a2 2 0 01-2-2V6a2 2 0 012-2h7l5 5v10a2 2 0 01-2 2z'%3E%3C/path%3E%3C/svg%3E");
+}
+
+.ad2-icon {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'%3E%3C/path%3E%3C/svg%3E");
+}
+
+.experimental-icon {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z'%3E%3C/path%3E%3C/svg%3E");
+}
+
+.star-icon {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z'%3E%3C/path%3E%3C/svg%3E");
+}
+
+/* Submenu Icons */
+.chart-line-icon {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z'%3E%3C/path%3E%3C/svg%3E");
+}
+
+.scan-icon {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z'%3E%3C/path%3E%3C/svg%3E");
+}
+
+.strategy-icon {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z'%3E%3C/path%3E%3C/svg%3E");
+}
+
+.trend-icon {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M13 7h8m0 0v8m0-8l-8 8-4-4-6 6'%3E%3C/path%3E%3C/svg%3E");
+}
+
+.spec-trend-icon {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z'%3E%3C/path%3E%3C/svg%3E");
+}
+
+.overview-icon {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 13a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1v-7z'%3E%3C/path%3E%3C/svg%3E");
+}
+
+.heatmap-icon {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15'%3E%3C/path%3E%3C/svg%3E");
+}
+
+.volume-icon {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2m0 0V1a1 1 0 011-1h2a1 1 0 011 1v22a1 1 0 01-1 1h-2a1 1 0 01-1-1V4M7 4V1a1 1 0 00-1-1H4a1 1 0 00-1 1v22a1 1 0 001 1h2a1 1 0 001-1V4m0 0h10M9 9h6m-6 4h6m-6 4h6'%3E%3C/path%3E%3C/svg%3E");
+}
+
+.sentiment-icon {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'%3E%3C/path%3E%3C/svg%3E");
+}
+
+.submenu-icon {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M9 5l7 7-7 7'%3E%3C/path%3E%3C/svg%3E");
+}
+
+.recommendation-icon {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'%3E%3C/path%3E%3C/svg%3E");
+}
+
+.signal-icon {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M13 7h8m0 0v8m0-8l-8 8-4-4-6 6'%3E%3C/path%3E%3C/svg%3E");
+}
+
+.insight-icon {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z'%3E%3C/path%3E%3C/svg%3E");
+}
+
+.learning-icon {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253'%3E%3C/path%3E%3C/svg%3E");
+}
+
+.position-icon {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z'%3E%3C/path%3E%3C/svg%3E");
+}
+
+/* About page for unauthenticated users */
+.about-page-container {
+  min-height: 100vh;
+}
+
+.about-page-container .top-navbar {
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  z-index: 1000;
+  padding-top: 8px;
+}
+
+.about-page-container .navbar-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.about-page-container .nav-logo-menu-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.about-page-container .nav-logo {
+  display: flex;
+  align-items: center;
+}
+
+.about-page-container .nav-logo-image {
+  width: 120px;
+  height: 38px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.about-page-container .nav-menu {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.about-page-container .nav-item {
+  color: #333;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  border: 1px solid #e9ecef;
+  background-color: #f8f9fa;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.about-page-container .nav-item:hover {
+  background-color: #e9ecef;
+  border-color: #dee2e6;
+  color: #495057;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.about-page-container .about-icon {
+  width: 16px;
+  height: 16px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+
+/* Responsive Styles */
+@media screen and (max-width: 992px) {
+  .navbar-ai-notice {
+    display: none;
+  }
+}
+
+@media screen and (max-width: 768px) {
+  .top-navbar {
+    height: 56px;
+    padding-top: 4px;
+  }
+
+  .navbar-container {
+    justify-content: space-between;
+  }
+
+  .nav-logo-menu-group {
+    justify-content: flex-start;
+  }
+
+  .navbar-logo {
+    margin-right: 0;
+    height: 32px;
+  }
+
+  .site-logo {
+    height: 28px;
+  }
+
+  .navbar-menu {
+    display: none !important;
+  }
+
+  .mobile-toggle {
+    display: flex;
+  }
+
+  .mobile-menu {
+    top: 64px;
+    display: block;
+  }
+  
+  .mobile-menu.with-notification {
+    top: 104px; /* 64px + 40px notification */
+  }
+
+  .mobile-menu.with-data-notification {
+    top: 94px; /* 64px navbar + 30px data notification */
+  }
+
+  .mobile-menu.with-notification.with-data-notification {
+    top: 134px; /* 64px navbar + 40px mobile notification + 30px data notification */
+  }
+
+  .qr-body .qr-image {
+    width: 100px;
+    height: 100px;
+  }
+
+  .qr-body .qr-info-image {
+    width: 140px;
+    height: 50px;
+  }
+
+  .qr-content {
+    width: 160px;
+  }
+
+  .main-content {
+    margin-left: 0 !important;
+    width: 100% !important;
+    padding: 15px;
+  }
+  
+  .content-container {
+    padding: 0;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .top-navbar {
+    height: 50px;
+  }
+
+  .navbar-logo {
+    height: 28px;
+  }
+
+  .site-logo {
+    height: 24px;
+  }
+
+  .mobile-menu {
+    top: 50px;
+    max-height: calc(100vh - 50px);
+  }
+
+  .mobile-menu.with-notification {
+    top: 90px; /* 50px + 40px notification */
+    max-height: calc(100vh - 90px);
+  }
+
+  .mobile-menu.with-data-notification {
+    top: 80px; /* 50px navbar + 30px data notification */
+    max-height: calc(100vh - 80px);
+  }
+
+  .mobile-menu.with-notification.with-data-notification {
+    top: 120px; /* 50px navbar + 40px mobile notification + 30px data notification */
+    max-height: calc(100vh - 120px);
+  }
+
+  .main-content {
+    margin-top: 50px;
+  }
+
+  .main-content.with-data-notification {
+    margin-top: 80px; /* 50px navbar + 30px data notification */
+  }
+}
+
+/* Layout and Container Styles */
+.nav-logo-menu-group {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.content-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 20px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Navigation Bar Styles */
+.navbar-container {
+  max-width: 1000px;
+  padding: 0 20px;
+}
+
+.navbar-menu {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 100%;
+}
+
+.nav-item {
+  padding: 0 16px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.nav-item i {
+  width: 20px;
+  height: 20px;
+  margin-right: 8px;
+  display: inline-block;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  flex-shrink: 0;
+}
+
+/* Floating QR Code Styles */
+.floating-qr {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.qr-toggle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #07C160;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  transition: transform 0.3s ease;
+}
+
+.qr-toggle:hover {
+  transform: scale(1.05);
+}
+
+.wechat-icon {
+  width: 28px;
+  height: 28px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='white' viewBox='0 0 24 24'%3E%3Cpath d='M8.5,13.5A1.5,1.5 0 0,1 7,12A1.5,1.5 0 0,1 8.5,10.5A1.5,1.5 0 0,1 10,12A1.5,1.5 0 0,1 8.5,13.5M15.5,13.5A1.5,1.5 0 0,1 14,12A1.5,1.5 0 0,1 15.5,10.5A1.5,1.5 0 0,1 17,12A1.5,1.5 0 0,1 15.5,13.5M12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+
+.qr-content {
+  position: absolute;
+  bottom: 60px;
+  right: 0;
+  width: 280px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  animation: slide-up 0.3s ease;
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.qr-header {
+  padding: 12px 16px;
+  background: #f8f9fa;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #eee;
+}
+
+.qr-header span {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: #666;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.close-btn:hover {
+  color: #333;
+}
+
+.qr-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.qr-body .qr-image {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.qr-body .qr-info-image {
+  width: 180px;
+  height: 60px;
+  object-fit: contain;
+  border-radius: 4px;
+  background-color: white;
+  padding: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.qr-text {
+  font-size: 14px;
+  color: #666;
+  text-align: center;
+}
+
+/* Responsive Styles */
+@media screen and (max-width: 768px) {
+  .content-container {
+    padding: 0 12px;
+  }
+  
+  .floating-qr {
+    right: 16px;
+    bottom: 16px;
+  }
+  
+  .qr-toggle {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .wechat-icon {
+    width: 24px;
+    height: 24px;
+  }
+  
+  .qr-content {
+    width: calc(100vw - 32px);
+    max-width: 280px;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .content-container {
+    padding: 0 8px;
+  }
+  
+  .data-update-notification {
+    height: 28px;
+    padding: 6px 10px;
+  }
+  
+  .data-update-notification .notification-content {
+    font-size: 12px;
+  }
+  
+  .qr-toggle {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .wechat-icon {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+/* Add mobile notification styles */
+.mobile-notification {
+  background-color: #f0f7ff;
+  color: #333;
+  padding: 10px 15px;
+  text-align: center;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1003; /* Increased to be above data notification */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: center;
+  border-bottom: 1px solid #d0e3ff;
+  height: 40px;
+  box-sizing: border-box;
+}
+
+.notification-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+  max-width: 1000px;
+  width: 100%;
+  position: relative;
+  padding: 0 10px;
+}
+
+.notification-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.notification-icon {
+  margin-right: 8px;
+  font-size: 16px;
+}
+
+/* Common close button styles for all notifications */
+.close-notification {
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 20px;
+  cursor: pointer;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 0;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.close-notification:hover {
+  opacity: 1;
+}
+
+/* Add data update notification styles */
+.data-update-notification {
+  background-color: rgba(230, 240, 250, 0.95);
+  color: #333;
+  padding: 8px 15px;
+  text-align: center;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1002;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  display: flex;
+  justify-content: center;
+  height: 30px;
+  box-sizing: border-box;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+
+.data-update-notification.with-mobile-notification {
+  top: 40px; /* Position below mobile notification */
+}
+
+.data-update-notification .notification-content {
+  padding: 0 10px;
+  font-size: 13px;
+  font-weight: 400;
+  max-width: 1000px;
+  width: 100%;
+  position: relative;
+}
+
+.data-update-notification .notification-icon {
+  color: #5c87b2;
+  margin-right: 8px;
+  font-size: 14px;
+}
+
+/* Fade animation */
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+  transform: translateY(-100%);
+}
+
+/* Adjust positions for elements with data notification */
+.top-navbar.with-data-notification {
+  top: 30px;
+  transition: top 0.3s ease;
+}
+
+.top-navbar.with-notification.with-data-notification {
+  top: 70px; /* 40px mobile notification + 30px data notification */
+}
+
+.mobile-menu.with-data-notification {
+  top: 86px; /* 56px navbar + 30px data notification */
+  transition: top 0.3s ease;
+}
+
+.mobile-menu.with-notification.with-data-notification {
+  top: 126px; /* 56px navbar + 40px mobile notification + 30px data notification */
+}
+
+.main-content.with-data-notification {
+  margin-top: 94px; /* 64px navbar + 30px data notification */
+  transition: margin-top 0.3s ease;
+}
+
+.main-content.with-notification.with-data-notification {
+  margin-top: 134px; /* 64px navbar + 40px mobile notification + 30px data notification */
+}
+
+@media screen and (max-width: 768px) {
+  .main-content.with-data-notification {
+    margin-top: 86px; /* 56px navbar + 30px data notification */
+  }
+  
+  .main-content.with-notification.with-data-notification {
+    margin-top: 126px; /* 56px navbar + 40px mobile notification + 30px data notification */
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .mobile-menu.with-data-notification {
+    top: 80px; /* 50px navbar + 30px data notification */
+  }
+  
+  .mobile-menu.with-notification.with-data-notification {
+    top: 120px; /* 50px navbar + 40px mobile notification + 30px data notification */
+  }
+  
+  .main-content.with-data-notification {
+    margin-top: 80px; /* 50px navbar + 30px data notification */
+  }
+  
+  .main-content.with-notification.with-data-notification {
+    margin-top: 120px; /* 50px navbar + 40px mobile notification + 30px data notification */
+  }
+}
+
+/* Dropdown Menu Styles */
+.dropdown {
+  position: relative;
+}
+
+.dropdown-trigger {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  cursor: pointer;
+}
+
+.dropdown-arrow {
+  margin-left: 6px;
+  width: 10px;
+  height: 10px;
+  position: relative;
+  transition: transform 0.3s ease;
+}
+
+.dropdown-arrow::before {
+  content: "";
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  top: 0;
+}
+
+.dropdown-arrow.expanded {
+  transform: rotate(180deg);
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 150px;
+  background: white;
+  border-radius: 4px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  z-index: 1010;
+  animation: dropdown-fade 0.2s ease;
+}
+
+@keyframes dropdown-fade {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dropdown-item {
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.dropdown-item:hover {
+  background-color: #f5f7fa;
+  color: #409EFF;
+}
+
+.dropdown-item.active {
+  background-color: #ecf5ff;
+  color: #409EFF;
+  font-weight: 500;
+}
+
+/* Mobile Menu Toggle Button */
+.mobile-toggle {
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: none;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 24px;
+  height: 18px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  z-index: 1000;
+}
+
+.mobile-toggle span {
+  display: block;
+  height: 2px;
+  width: 100%;
+  background-color: #606266;
+  transition: all 0.3s ease;
+}
+
+.mobile-toggle:hover span {
+  background-color: #409EFF;
+}
+
+@media screen and (max-width: 768px) {
+  .mobile-toggle {
+    display: flex;
+  }
+  
+  .navbar-menu {
+    display: none !important;
+  }
+  
+  .nav-logo-menu-group {
+    justify-content: flex-start;
+    flex: 1;
+  }
+  
+  .navbar-logo {
+    margin-right: 0;
+  }
+  
+  .site-logo {
+    height: 32px;
+  }
+}
+
+/* Mobile Menu Styles */
+.mobile-menu {
+  position: fixed;
+  top: 64px;
+  left: 0;
+  right: 0;
+  background: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 999;
+  padding: 8px 0;
+  max-height: calc(100vh - 64px);
+  overflow-y: auto;
+  transition: top 0.3s ease, transform 0.3s ease;
+}
+
+.mobile-menu.with-notification {
+  top: 104px; /* 64px + 40px notification */
+  max-height: calc(100vh - 104px);
+}
+
+.mobile-menu.with-data-notification {
+  top: 94px; /* 64px navbar + 30px data notification */
+  max-height: calc(100vh - 94px);
+}
+
+.mobile-menu.with-notification.with-data-notification {
+  top: 134px; /* 64px navbar + 40px mobile notification + 30px data notification */
+  max-height: calc(100vh - 134px);
+}
+
+.mobile-menu-item {
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: #606266;
+  background: white;
+}
+
+.mobile-item-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mobile-menu-item i {
+  width: 20px;
+  height: 20px;
+  opacity: 0.8;
+  flex-shrink: 0;
+}
+
+.mobile-menu-item span {
+  font-size: 16px;
+}
+
+.mobile-menu-item:hover {
+  background-color: #f5f7fa;
+  color: #409EFF;
+}
+
+.mobile-menu-item:hover i {
+  opacity: 1;
+}
+
+.mobile-menu-item.active {
+  color: #409EFF;
+  font-weight: 500;
+}
+
+.mobile-menu-item.sub {
+  padding-left: 40px;
+  background-color: #f9f9f9;
+}
+
+.mobile-submenu {
+  background-color: #f9f9f9;
+  animation: submenu-fade 0.2s ease;
+}
+
+@keyframes submenu-fade {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dropdown-arrow {
+  width: 20px;
+  height: 20px;
+  position: relative;
+  transition: transform 0.3s ease;
+}
+
+.dropdown-arrow::before {
+  content: "";
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  top: 4px;
+  left: 4px;
+}
+
+.dropdown-arrow.expanded {
+  transform: rotate(180deg);
+}
+
+/* AI Notice Styles */
+.navbar-ai-notice {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: linear-gradient(to right, #e9f5ff, #ffffff);
+  border-radius: 6px;
+  border-left: 2px solid #409EFF;
+}
+
+.ai-icon {
+  font-size: 14px;
+  color: #409EFF;
+}
+
+.ai-text {
+  font-size: 12px;
+  color: #606266;
+  white-space: nowrap;
+}
+
+/* Transition Styles */
+.sidebar {
+  transition: top 0.3s ease, width 0.3s ease, transform 0.3s ease;
+}
+
+.data-update-notification {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.mobile-menu {
+  transition: top 0.3s ease, transform 0.3s ease;
+}
+
+.main-content {
+  transition: margin 0.3s ease, width 0.3s ease;
+}
+
+/* Notification Styles */
+.data-update-notification {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(230, 240, 250, 0.95);
+  backdrop-filter: blur(4px);
+  color: #606266;
+  font-size: 14px;
+  z-index: 1001;
+  padding: 0 20px;
+}
+
+.data-update-notification.with-mobile-notification {
+  top: 40px;
+}
+
+.mobile-notification {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(230, 240, 250, 0.95);
+  backdrop-filter: blur(4px);
+  color: #606266;
+  font-size: 14px;
+  z-index: 1002;
+  padding: 0 20px;
+}
+
+/* Global Dark Mode Styles */
+body.dark-mode {
+  background-color: #1a1a1a !important;
+  color: #ffffff !important;
+}
+
+body.dark-mode #app {
+  color: #ffffff;
+}
+
+body.dark-mode .app-container {
+  background-color: #1a1a1a;
+}
+
+body.dark-mode .top-navbar {
+  background-color: #2d2d2d;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+body.dark-mode .nav-item {
+  color: #b0b3b8;
+}
+
+body.dark-mode .nav-item.active {
+  color: #409eff;
+  background-color: rgba(64, 158, 255, 0.1);
+}
+
+body.dark-mode .nav-item:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+body.dark-mode .sidebar {
+  background-color: #2d2d2d;
+  border-right: 1px solid #4c4d4f;
+}
+
+body.dark-mode .sidebar-item {
+  color: #b0b3b8;
+}
+
+body.dark-mode .sidebar-item:hover,
+body.dark-mode .sidebar-item.active {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+}
+
+body.dark-mode .main-content {
+  background-color: #1a1a1a;
+}
+
+/* Dark mode - Navigation icons */
+body.dark-mode .nav-item i,
+body.dark-mode .nav-item [class*="-icon"] {
+  filter: brightness(0) invert(1); /* Make icons white */
+}
+
+body.dark-mode .sidebar-title {
+  color: #ffffff !important;
+}
+
+body.dark-mode .sidebar-title h3 {
+  color: #ffffff !important;
+}
+
+body.dark-mode .sidebar-title i {
+  filter: brightness(0) invert(1);
+}
+
+body.dark-mode .sidebar-header {
+  border-bottom-color: #4c4d4f;
+}
+
+/* Dark mode - Mobile menu */
+body.dark-mode .mobile-menu {
+  background-color: #2d2d2d;
+}
+
+body.dark-mode .mobile-menu-item {
+  color: #b0b3b8;
+}
+
+body.dark-mode .mobile-menu-item.active {
+  color: #409eff;
+  background-color: rgba(64, 158, 255, 0.1);
+}
+
+body.dark-mode .mobile-menu-item i {
+  filter: brightness(0) invert(1);
+}
+
+/* Dark mode - All page components */
+body.dark-mode .strategy-data,
+body.dark-mode .small-cap-data,
+body.dark-mode .nng-cap-data,
+body.dark-mode .market-style,
+body.dark-mode .retail-sentiment,
+body.dark-mode .market-heatmap,
+body.dark-mode .volume-heatmap,
+body.dark-mode .etf-screen,
+body.dark-mode .dynamic-momentum,
+body.dark-mode .spec-trend-strategy {
+  background-color: #1a1a1a;
+  color: #ffffff;
+}
+
+/* Dark mode - Headers and titles */
+body.dark-mode .strategy-title,
+body.dark-mode .section-header h3,
+body.dark-mode .merged-header-section h2,
+body.dark-mode .header-container h2 {
+  color: #ffffff !important;
+}
+
+body.dark-mode .update-time,
+body.dark-mode .date-subtitle {
+  color: #b0b3b8 !important;
+}
+
+/* Dark mode - Data sections */
+body.dark-mode .data-section,
+body.dark-mode .merged-header-section,
+body.dark-mode .latest-data,
+body.dark-mode .summary-content,
+body.dark-mode .data-container {
+  background-color: #2d2d2d !important;
+}
+
+body.dark-mode .section-header {
+  background-color: rgba(0, 0, 0, 0.2) !important;
+  border-bottom-color: #4c4d4f !important;
+}
+
+/* Dark mode - Tables */
+body.dark-mode .data-table,
+body.dark-mode table {
+  background-color: #2d2d2d !important;
+  color: #ffffff !important;
+}
+
+body.dark-mode .data-table th,
+body.dark-mode table th {
+  background-color: #3a3a3a !important;
+  color: #ffffff !important;
+  border-color: #4c4d4f !important;
+}
+
+body.dark-mode .data-table td,
+body.dark-mode table td {
+  border-color: #4c4d4f !important;
+  color: #ffffff !important;
+}
+
+body.dark-mode .data-table tr:hover,
+body.dark-mode table tr:hover {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Dark mode - Text colors */
+body.dark-mode .label,
+body.dark-mode .summary-item,
+body.dark-mode .summary-item span {
+  color: #b0b3b8 !important;
+}
+
+body.dark-mode .value,
+body.dark-mode .summary-item .value {
+  color: #ffffff !important;
+}
+
+/* Dark mode - Sidebar items */
+body.dark-mode .sidebar-item {
+  color: #b0b3b8 !important;
+}
+
+body.dark-mode .sidebar-item span {
+  color: #b0b3b8 !important;
+}
+
+body.dark-mode .sidebar-item.active,
+body.dark-mode .sidebar-item.active span {
+  color: #ffffff !important;
+}
+
+/* Dark mode - All card types */
+/* Dark mode - All card types */
+body.dark-mode .card,
+body.dark-mode .data-card,
+body.dark-mode .chart-section,
+body.dark-mode .market-week-section,
+body.dark-mode .full-width-card,
+body.dark-mode .table-wrapper,
+body.dark-mode .chart-wrapper,
+body.dark-mode .chart-card,
+body.dark-mode .signal-card,
+body.dark-mode .strategy-card,
+body.dark-mode .etf-card,
+body.dark-mode .dama-card,
+body.dark-mode .nng-card,
+body.dark-mode .fund-card,
+body.dark-mode .section-card,
+body.dark-mode .position-card,
+body.dark-mode .account-card,
+body.dark-mode .overbuy-block,
+body.dark-mode .momentum-stat,
+body.dark-mode .intro-card,
+body.dark-mode .loading-state,
+body.dark-mode .error-state,
+body.dark-mode .empty-state,
+body.dark-mode .auth-required-content,
+body.dark-mode .follow-card,
+body.dark-mode .etf-tabs,
+body.dark-mode .articles-card,
+body.dark-mode .promo-card {
+  background-color: #2d2d2d !important;
+}
+
+/* Dark mode - Page Backgrounds */
+body.dark-mode .about-page,
+body.dark-mode .experimental-features,
+body.dark-mode .content-container,
+body.dark-mode .auth-required-container,
+body.dark-mode .market-style-page,
+body.dark-mode .retail-sentiment-container,
+body.dark-mode .ad-page,
+body.dark-mode .small-cap-data,
+body.dark-mode .nng-cap-data {
+  background: #1a1a1a !important;
+}
+
+/* Dark mode - Card & Container Backgrounds */
+body.dark-mode .card,
+body.dark-mode .intro-card,
+body.dark-mode .strategy-card,
+body.dark-mode .nng-card,
+body.dark-mode .fund-card,
+body.dark-mode .section-card,
+body.dark-mode .position-card,
+body.dark-mode .account-card,
+body.dark-mode .loading-state,
+body.dark-mode .error-state,
+body.dark-mode .empty-state,
+body.dark-mode .auth-required-content,
+body.dark-mode .follow-card,
+body.dark-mode .etf-tabs,
+body.dark-mode .articles-card,
+body.dark-mode .promo-card,
+body.dark-mode .dashboard-card,
+body.dark-mode .data-grid,
+body.dark-mode .transaction-log-card,
+body.dark-mode .data-section,
+body.dark-mode .history-data,
+body.dark-mode .data-card,
+body.dark-mode .header-section,
+body.dark-mode .section-header {
+  background: #2d2d2d !important; /* Removed linear-gradient via background property */
+  background-color: #2d2d2d !important;
+  border-color: #4c4d4f !important;
+}
+
+/* Indicator Box (Market Style) - slightly lighter */
+body.dark-mode .indicator-box {
+  background-color: #363636 !important;
+  color: #e0e0e0 !important;
+}
+
+/* Dark mode - Card headers */
+body.dark-mode .card-header,
+body.dark-mode .chart-header {
+  background-color: rgba(0, 0, 0, 0.2) !important;
+  border-bottom-color: #4c4d4f !important;
+}
+
+body.dark-mode .card-title,
+body.dark-mode .card-header h3,
+body.dark-mode .page-title,
+body.dark-mode .strategy-title,
+body.dark-mode .fund-code,
+body.dark-mode .days-label,
+body.dark-mode .stat-value {
+  color: #ffffff !important;
+}
+
+body.dark-mode .card-subtitle,
+body.dark-mode .page-description,
+body.dark-mode .summary-line,
+body.dark-mode .fund-name,
+body.dark-mode .row-title,
+body.dark-mode .info-label,
+body.dark-mode .stat-label {
+  color: #b0b3b8 !important;
+}
+
+/* Dark mode - Card content */
+body.dark-mode .card-content {
+  background-color: #2d2d2d !important;
+  color: #ffffff !important;
+}
+
+body.dark-mode .about-page .card-content {
+  background: #2d2d2d !important;
+}
+
+body.dark-mode .intro-card h3,
+body.dark-mode .intro-card p,
+body.dark-mode .intro-card li,
+body.dark-mode .follow-card h3,
+body.dark-mode .auth-title,
+body.dark-mode .articles-title,
+body.dark-mode .article-name,
+body.dark-mode .promo-card h3,
+body.dark-mode .loading-state p,
+body.dark-mode .error-state p,
+body.dark-mode .empty-state p {
+  color: #e0e0e0 !important;
+}
+
+body.dark-mode .auth-description,
+body.dark-mode .checkbox-text,
+body.dark-mode .articles-subtitle,
+body.dark-mode .article-desc,
+body.dark-mode .promo-text p,
+body.dark-mode .promo-tip {
+  color: #b0b3b8 !important;
+}
+
+body.dark-mode .article-item {
+  background-color: #363636 !important;
+}
+
+/* Dark mode - Text Colors */
+body.dark-mode .page-title,
+body.dark-mode .card-title,
+body.dark-mode .strategy-title,
+body.dark-mode .strategy-table th,
+body.dark-mode .data-table th,
+body.dark-mode .intro-card h3,
+body.dark-mode .intro-card li strong,
+body.dark-mode .stat-value,
+body.dark-mode .signal-text,
+body.dark-mode .fund-name,
+body.dark-mode .fund-code,
+body.dark-mode .info-label,
+body.dark-mode .intro-card li,
+body.dark-mode .follow-card h3,
+body.dark-mode .auth-title,
+body.dark-mode .articles-title,
+body.dark-mode .article-name,
+body.dark-mode .promo-card h3,
+body.dark-mode .loading-state p,
+body.dark-mode .error-state p,
+body.dark-mode .empty-state p,
+body.dark-mode .section-title,
+body.dark-mode .indicator-header h4,
+body.dark-mode .indicator-value,
+body.dark-mode .temp-label,
+/* body.dark-mode .temp-value,  <-- REMOVED to allow inline style for contrast */
+body.dark-mode .temp-stage,
+body.dark-mode .distribution-section h4,
+/* body.dark-mode .dist-value, <-- REMOVED, handled separately below */
+body.dark-mode .values-row,
+body.dark-mode .data-cell {
+  color: #e0e0e0 !important;
+}
+
+body.dark-mode .strategy-table td,
+body.dark-mode .data-table td,
+body.dark-mode .intro-card p,
+body.dark-mode .info-value,
+body.dark-mode .auth-description,
+body.dark-mode .checkbox-text,
+body.dark-mode .articles-subtitle,
+body.dark-mode .article-desc,
+body.dark-mode .promo-text p,
+body.dark-mode .promo-tip,
+body.dark-mode .card-subtitle,
+body.dark-mode .page-description,
+body.dark-mode .indicator-description,
+body.dark-mode .dist-label,
+body.dark-mode .labels-row {
+  color: #b0b3b8 !important;
+}
+
+body.dark-mode .article-item,
+body.dark-mode .dist-item {
+  background-color: #363636 !important;
+}
+
+/* Heatmap Distribution Values - Dark background, light text */
+body.dark-mode .dist-value {
+  background-color: #4a4a4a !important;
+  color: #ffffff !important;
+}
+
+/* Dark mode - Chart/Heatmap Logic */
+/* Ensure heatmap date/category labels are visible */
+body.dark-mode .category-label {
+    color: #b0b3b8 !important;
+}
+/* STRICT ALIGNMENT FIX: Force date column to match row height exactly */
+body.dark-mode .date-column {
+    color: #b0b3b8 !important;
+    height: 25px !important;
+    line-height: 25px !important;
+    /* padding: 0 5px !important; */ /* 移除padding，避免增加宽度导致不对齐 */
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important; /* 添加水平居中 */
+    box-sizing: border-box !important; /* 确保padding包含在width内 */
+}
+body.dark-mode .sticky-left {
+    background-color: #2d2d2d !important;
+    box-shadow: none !important; /* 移除阴影避免右移 */
+}
+/* Revert sticky background for header if needed, but 2d2d2d should work */
+
+/* Data Panorama Title Fix (HomePage) */
+body.dark-mode .home-page .page-title {
+  color: #ffffff !important;
+}
+
+/* AI Insight Markdown Content */
+body.dark-mode .markdown-content {
+  background-color: #2d2d2d !important;
+  color: #e0e0e0 !important;
+}
+body.dark-mode .markdown-content h1,
+body.dark-mode .markdown-content h2,
+body.dark-mode .markdown-content h3,
+body.dark-mode .markdown-content h4,
+body.dark-mode .markdown-content strong {
+  color: #ffffff !important;
+  border-bottom-color: #4c4d4f !important;
+}
+body.dark-mode .markdown-content p,
+body.dark-mode .markdown-content li {
+  color: #e0e0e0 !important;
+}
+body.dark-mode .markdown-content code {
+  background-color: #363636 !important;
+  color: #f56c6c !important;
+}
+body.dark-mode .markdown-content pre {
+  background-color: #1e1e1e !important;
+}
+body.dark-mode .markdown-content blockquote {
+  background-color: #363636 !important;
+  border-left-color: #409eff !important;
+  color: #b0b3b8 !important;
+}
+body.dark-mode .markdown-content table th {
+    background-color: #363636 !important;
+    color: #ffffff !important;
+    border-color: #4c4d4f !important;
+}
+body.dark-mode .markdown-content table td {
+    color: #e0e0e0 !important;
+    border-color: #4c4d4f !important;
+}
+body.dark-mode .markdown-content table tr:hover td {
+    background-color: #3d3d3d !important;
+}
+
+body.dark-mode .section-header h3 {
+    color: #e0e0e0 !important;
+}
+body.dark-mode .log-item {
+    background-color: #363636 !important;
+    border-color: #4c4d4f;
+}
+
+/* Dark mode - Navbar & Mobile Menu */
+body.dark-mode .top-navbar,
+body.dark-mode .mobile-menu {
+  background-color: #2d2d2d !important;
+  border-bottom: 1px solid #4c4d4f !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2) !important;
+}
+
+body.dark-mode .nav-item,
+body.dark-mode .mobile-menu-item {
+  color: #e0e0e0 !important;
+}
+
+body.dark-mode .nav-item:hover,
+body.dark-mode .mobile-menu-item:hover,
+body.dark-mode .mobile-menu-item.active,
+body.dark-mode .nav-item.active {
+    background-color: #3d3d3d !important;
+    color: #409eff !important;
+}
+
+body.dark-mode .mobile-toggle span {
+    background-color: #e0e0e0 !important;
+}
+
+/* Dark mode - Sentiment Colors (Retail Sentiment) */
+body.dark-mode .high-sentiment {
+  background-color: rgba(245, 108, 108, 0.15) !important;
+  color: #f56c6c !important;
+}
+body.dark-mode .low-sentiment {
+  background-color: rgba(64, 158, 255, 0.15) !important;
+  color: #409eff !important;
+}
+
+body.dark-mode .loading-placeholder {
+    color: #b0b3b8 !important;
+}
+
+/* Dark mode - Form Inputs */
+body.dark-mode .input-wrapper {
+  background-color: #3d3d3d !important;
+  border-color: #4c4d4f !important;
+}
+
+body.dark-mode input {
+  color: #e0e0e0 !important;
+  background-color: transparent !important;
+}
+
+body.dark-mode .input-icon {
+  color: #b0b3b8 !important;
+}
+
+/* Dark mode - Sidebar toggle button */
+body.dark-mode .sidebar-toggle,
+body.dark-mode .collapse-btn {
+  background-color: #3a3a3a !important;
+  color: #ffffff !important;
+}
+
+
+
+/* Floating Theme Toggle Button */
+.floating-theme-toggle {
+  position: fixed;
+  bottom: 90px;
+  right: 30px;
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  transition: all 0.3s ease;
+  z-index: 1000;
+}
+
+.floating-theme-toggle:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.6);
+}
+
+.floating-theme-toggle .theme-icon {
+  font-size: 24px;
+  filter: none;
+}
+
+body.dark-mode .floating-theme-toggle {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  box-shadow: 0 4px 12px rgba(240, 147, 251, 0.4);
+}
+
+body.dark-mode .floating-theme-toggle:hover {
+  box-shadow: 0 6px 16px rgba(240, 147, 251, 0.6);
+}
+
+@media screen and (max-width: 768px) {
+  .floating-theme-toggle {
+    bottom: 80px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+  }
+  
+  .floating-theme-toggle .theme-icon {
+    font-size: 20px;
+  }
+}
+
+/* Dark mode - All icons including sidebar submenu */
+body.dark-mode .sidebar-item i,
+body.dark-mode .sidebar-item [class*="-icon"],
+body.dark-mode i[class*="-icon"],
+body.dark-mode .icon {
+  filter: brightness(0) invert(1) !important;
+}
+
+/* Dark mode - Loading and empty states */
+body.dark-mode .loading-text,
+body.dark-mode .empty-state {
+  color: #b0b3b8 !important;
+}
+
+/* Dark mode - KlinePanel specific overrides */
+body.dark-mode .detail-info {
+  background-color: #2d2d2d !important;
+  border-bottom-color: #4c4d4f !important;
+}
+
+body.dark-mode .detail-label {
+  color: #b0b3b8 !important;
+}
+
+body.dark-mode .detail-value {
+  color: #e0e0e0 !important;
+}
+
+body.dark-mode .signal-table th {
+  background-color: rgba(0, 0, 0, 0.2) !important;
+  color: #e0e0e0 !important;
+  border-bottom-color: #4c4d4f !important;
+}
+
+body.dark-mode .signal-table td {
+  background-color: #2d2d2d !important;
+  border-bottom-color: #4c4d4f !important;
+  color: #e0e0e0 !important;
+}
+
+body.dark-mode .date-cell,
+body.dark-mode .time-cell {
+  color: #b0b3b8 !important;
+}
+
+body.dark-mode .timeframe-info {
+  color: #ff6b6b !important;
+}
+
+/* Dark mode - Experimental Features Tables */
+body.dark-mode .strategy-table th,
+body.dark-mode .data-table th {
+  background-color: rgba(0, 0, 0, 0.2) !important;
+  color: #e0e0e0 !important;
+  border-bottom-color: #4c4d4f !important;
+}
+
+body.dark-mode .strategy-table td,
+body.dark-mode .data-table td {
+  border-bottom-color: #4c4d4f !important;
+  color: #e0e0e0 !important;
+}
+/* Dark mode - Mobile Navbar & Menu Override (Round 6) */
+body.dark-mode .top-navbar,
+body.dark-mode .navbar-container,
+body.dark-mode .mobile-menu {
+  background-color: #2d2d2d !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+}
+
+body.dark-mode .mobile-menu-item {
+  background-color: #2d2d2d !important;
+  color: #e0e0e0 !important;
+  border-bottom: 1px solid #3d3d3d !important;
+}
+
+body.dark-mode .mobile-menu-item:hover,
+body.dark-mode .mobile-menu-item.active {
+  background-color: #3d3d3d !important; 
+  color: #409eff !important;
+}
+
+body.dark-mode .mobile-submenu, 
+body.dark-mode .mobile-menu-item.sub {
+  background-color: #1a1a1a !important;
+}
+
+/* Dark mode - Mobile Sticky & Normal Table Columns Override */
+@media screen and (max-width: 768px) {
+  /* Target ALL th and td in specified strategies for Dark Mode Mobile */
+  body.dark-mode .strategy-data .data-table th,
+  body.dark-mode .strategy-data .data-table td,
+  body.dark-mode .small-cap-data .data-table th,
+  body.dark-mode .small-cap-data .data-table td,
+  body.dark-mode .nng-cap-data .data-table th,
+  body.dark-mode .nng-cap-data .data-table td {
+    background-color: #2d2d2d !important;
+    border-color: #4c4d4f !important;
+    color: #e0e0e0 !important;
+  }
+  
+  /* Re-enforce sticky column z-index or other specificities if needed, 
+     but background is now uniform primarily. 
+     If sticky cols need to be ON TOP of others, they are already handled by scoped styles 
+     but we need to ensure they share the same dark bg. */
+
+  /* Specific fix for negative/highlight rows - stronger tint needed on dark bg */
+  body.dark-mode .small-cap-data .data-table tr.highlight-row td,
+  body.dark-mode .nng-cap-data .data-table tr.highlight-row td {
+      background-color: rgba(245, 108, 108, 0.15) !important; 
+  }
+
+  body.dark-mode .small-cap-data .data-table tr.negative-row td,
+  body.dark-mode .nng-cap-data .data-table tr.negative-row td {
+      background-color: rgba(103, 194, 58, 0.15) !important;
+  }
+}
+
+/* Dark mode - Section Headers Gradients Override */
+body.dark-mode .merged-header-section,
+body.dark-mode .header-section,
+body.dark-mode .section-header {
+  background: linear-gradient(to right, #2d2d2d, #363636) !important;
+}
+
+body.dark-mode .weekly-growth-container {
+    color: #e0e0e0 !important;
+}
+
+body.dark-mode .weekly-growth-label {
+    color: #b0b3b8 !important;
+}
+
+body.dark-mode .data-table {
+    background-color: #2d2d2d !important;
+}
+</style>
+

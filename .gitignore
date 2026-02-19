@@ -1,0 +1,23 @@
+# Backend
+backtest/.env.wsgi
+backtest/.jupyter/
+backtest/.gunicorn/
+backtest/research/notebooks/
+backtest/.venv/
+backtest/__pycache__/
+backtest/*.py[cod]
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.*
+frontend/.npm-cache/
+frontend/.local/
+frontend/build_log*.txt
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

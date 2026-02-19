@@ -1,0 +1,114 @@
+#coding: utf8
+
+import os
+from pathlib import Path
+
+basedir = os.path.abspath(os.path.dirname(__file__))
+project_root = Path(basedir).parent
+
+
+def _abs_path_from_env(env_name: str, default: str) -> str:
+    raw = os.environ.get(env_name, default)
+    path = Path(raw).expanduser()
+    if path.is_absolute():
+        return str(path)
+    return str((project_root / path).resolve())
+
+
+def _int_from_env(env_name: str, default: int) -> int:
+    raw = os.environ.get(env_name)
+    if raw is None:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        return default
+
+
+def _list_from_env(env_name: str, default: tuple[str, ...]) -> tuple[str, ...]:
+    raw = os.environ.get(env_name)
+    if raw is None:
+        return default
+    values = tuple(item.strip() for item in raw.split(",") if item.strip())
+    return values or default
+
+
+def _bool_from_env(env_name: str, default: bool) -> bool:
+    raw = os.environ.get(env_name)
+    if raw is None:
+        return default
+    normalized = raw.strip().lower()
+    if normalized in {"1", "true", "yes", "y", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "n", "off"}:
+        return False
+    return default
+
+
+def _str_from_env(env_name: str, default: str) -> str:
+    raw = os.environ.get(env_name)
+    if raw is None:
+        return default
+    return raw.strip()
+
+
+class Config:
+    FLASKY_POSTS_PER_PAGE = 20
+    SECRET_KEY = _str_from_env("SECRET_KEY", "change-me")
+    JWT_EXPIRES_HOURS = _int_from_env("JWT_EXPIRES_HOURS", 24)
+    LOCAL_AUTH_MOBILE = _str_from_env("LOCAL_AUTH_MOBILE", "admin")
+    LOCAL_AUTH_PASSWORD = os.environ.get("LOCAL_AUTH_PASSWORD", "")
+    LOCAL_AUTH_PASSWORD_HASH = os.environ.get("LOCAL_AUTH_PASSWORD_HASH", "")
+    LOCAL_AUTH_USER_ID = _int_from_env("LOCAL_AUTH_USER_ID", 1)
+    LOCAL_AUTH_IS_ADMIN = _bool_from_env("LOCAL_AUTH_IS_ADMIN", True)
+    RQALPHA_BUNDLE_PATH = _abs_path_from_env(
+        "RQALPHA_BUNDLE_PATH",
+        "/home/app/.rqalpha/bundle",
+    )
+    # Optional explicit command used to launch rqalpha, for example:
+    # "/home/app/backquant/backtest/.venv/bin/rqalpha" or "python -m rqalpha".
+    RQALPHA_COMMAND = _str_from_env("RQALPHA_COMMAND", "")
+    BACKTEST_BASE_DIR = _abs_path_from_env(
+        "BACKTEST_BASE_DIR",
+        "/home/app/rqalpha_platform_storage",
+    )
+    # Optional path to strategy rename metadata DB (default: <BACKTEST_BASE_DIR>/backtest_meta.sqlite3).
+    BACKTEST_RENAME_DB_PATH = _str_from_env("BACKTEST_RENAME_DB_PATH", "")
+    BACKTEST_TIMEOUT = _int_from_env("BACKTEST_TIMEOUT", 900)
+    BACKTEST_COMPILE_TIMEOUT = _int_from_env("BACKTEST_COMPILE_TIMEOUT", 10)
+    BACKTEST_KEEP_DAYS = _int_from_env("BACKTEST_KEEP_DAYS", 30)
+    BACKTEST_IDEMPOTENCY_WINDOW_SECONDS = _int_from_env("BACKTEST_IDEMPOTENCY_WINDOW_SECONDS", 30)
+    BACKTEST_ALLOWED_FREQUENCIES = _list_from_env("BACKTEST_ALLOWED_FREQUENCIES", ("1d",))
+    # Research workbench storage and notebook session settings.
+    # RESEARCH_PUBLIC_BASE_URL is optional; when empty, request.host_url is used.
+    RESEARCH_PUBLIC_BASE_URL = _str_from_env("RESEARCH_PUBLIC_BASE_URL", "")
+    RESEARCH_NOTEBOOK_PROXY_BASE = _str_from_env("RESEARCH_NOTEBOOK_PROXY_BASE", "/jupyter")
+    # Optional base URL for the Jupyter server API (defaults to <public_base_url><proxy_base>).
+    RESEARCH_NOTEBOOK_API_BASE = _str_from_env("RESEARCH_NOTEBOOK_API_BASE", "")
+    # Optional Jupyter API token (if Jupyter auth is enabled).
+    RESEARCH_NOTEBOOK_API_TOKEN = _str_from_env("RESEARCH_NOTEBOOK_API_TOKEN", "")
+    RESEARCH_NOTEBOOK_API_TIMEOUT_SECONDS = _int_from_env("RESEARCH_NOTEBOOK_API_TIMEOUT_SECONDS", 3)
+    # Optional notebook filesystem root (default: project root).
+    RESEARCH_NOTEBOOK_ROOT_DIR = _str_from_env("RESEARCH_NOTEBOOK_ROOT_DIR", "")
+    RESEARCH_SESSION_TTL_SECONDS = _int_from_env("RESEARCH_SESSION_TTL_SECONDS", 2 * 60 * 60)
+
+    @staticmethod
+    def init_app(app):
+        pass
+
+
+class ProductionConfig(Config):
+    DEBUG = False
+
+
+class DevelopmentConfig(Config):
+    DEBUG = True
+
+
+CONFIG = {
+    "product": ProductionConfig,
+    "development": DevelopmentConfig,
+    "default": DevelopmentConfig,
+}
+
+CONFIG_ENV = os.environ.get("CONFIG_ENV", "development")

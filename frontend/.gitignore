@@ -1,0 +1,58 @@
+# ======================
+# Node / Frontend
+# ======================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# ======================
+# Build output
+# ======================
+dist/
+dist-ssr/
+*.local
+
+# ======================
+# Env files
+# ======================
+.env
+.env.*
+!.env.example
+
+# ======================
+# Cache
+# ======================
+.cache/
+.vite/
+.eslintcache
+
+# ======================
+# IDE / Editor
+# ======================
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# ======================
+# OS files
+# ======================
+.DS_Store
+Thumbs.db
+
+# ======================
+# Logs
+# ======================
+logs/
+*.log
+
+# ======================
+# Tests / Coverage
+# ======================
+coverage/
+

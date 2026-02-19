@@ -1,0 +1,11 @@
+workers = 2
+threads = 2
+#bind = '0.0.0.0:8787'
+bind = '0.0.0.0:54321'
+daemon = 'true'
+worker_class = 'sync'
+worker_connections = 10
+pidfile = './.gunicorn/gunicorn.pid'
+accesslog = './.gunicorn/access.log'
+errorlog = './.gunicorn/error.log'
+loglevel = 'error'
