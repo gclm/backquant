@@ -121,7 +121,7 @@ PY
 
 ## License
 
-MIT. See `LICENSE`.
+Apache-2.0. See `LICENSE`.
 
 ## 微信公众号
 
