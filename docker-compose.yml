@@ -31,8 +31,6 @@ services:
     restart: unless-stopped
 
   jupyter:
-    build:
-      context: ./backtest
     image: backquant-backend
     environment:
       JUPYTER_TOKEN: ${JUPYTER_TOKEN:-}

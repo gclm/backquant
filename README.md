@@ -29,6 +29,7 @@ docker compose up --build
 ### 访问
 
 - 前端：`http://localhost:8080`
+- 首次登录账号/密码：`13800138000` / `pass123456`（可在 `.env` 中修改）
 
 说明：后端 API 与 Jupyter 已通过同域路径反向代理（`/api`、`/jupyter`），一般无需单独访问端口。
 
@@ -48,31 +49,6 @@ docker compose up --build
 - 运行时 `frontend/public/config.js`（无需重新构建）
 
 ## 三、其他的
-
-### 本地开发
-
-#### 后端
-
-```bash
-cd backtest
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.wsgi.example .env.wsgi
-python3 wsgi.py
-```
-
-默认端口：`54321`。
-
-#### 前端
-
-```bash
-cd frontend
-npm install
-npm run serve
-```
-
-默认端口：`8080`。
 
 ### Jupyter 示例
 
