@@ -48,13 +48,39 @@
         </button>
       </form>
     </div>
+
+    <transition name="modal-fade">
+      <div v-if="showBundleModal" class="bundle-modal-overlay" @click.self="closeBundleModal">
+        <div class="bundle-modal" role="dialog" aria-modal="true" aria-labelledby="bundle-modal-title">
+          <div class="bundle-modal-header">
+            <div class="bundle-modal-title" id="bundle-modal-title">系统初始化中</div>
+            <button type="button" class="bundle-modal-close" @click="closeBundleModal">×</button>
+          </div>
+          <div class="bundle-modal-body">
+            <div class="bundle-modal-icon" aria-hidden="true"></div>
+            <p class="bundle-modal-message">
+              系统首次启动，RQAlpha 行情数据下载中，请稍后...
+            </p>
+            <p v-if="bundleProgressText" class="bundle-modal-progress">
+              {{ bundleProgressText }}
+            </p>
+            <p v-else class="bundle-modal-progress muted">
+              正在获取下载进度...
+            </p>
+          </div>
+          <div class="bundle-modal-footer">
+            <button type="button" class="bundle-modal-action" @click="closeBundleModal">知道了</button>
+          </div>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
 
 <script>
 import { isAuthenticated } from '@/utils/auth';
 import axiosInstance from '@/utils/axios';
-import { API_ENDPOINTS } from '@/config/api';
+import { API_ENDPOINTS, API_BASE_URL } from '@/config/api';
 
 export default {
   name: 'ExperimentalFeatures',
@@ -68,12 +94,21 @@ export default {
       },
       isLoading: false,
       error: null,
-      showSuccess: false
+      showSuccess: false,
+      showBundleModal: false,
+      bundleProgressText: '',
+      bundlePollTimer: null,
+      bundlePollFailures: 0,
+      pendingLogin: false,
+      loginInProgress: false
     };
   },
   mounted() {
     this.redirectIfAuthenticated();
     this.checkSavedPassword();
+  },
+  beforeUnmount() {
+    this.stopBundlePolling();
   },
   methods: {
     redirectIfAuthenticated() {
@@ -92,7 +127,106 @@ export default {
         this.formData.rememberPassword = true;
       }
     },
-    async handleLogin() {
+    openBundleModal() {
+      if (this.showBundleModal) return;
+      this.showBundleModal = true;
+      this.bundleProgressText = '';
+      this.bundlePollFailures = 0;
+      this.startBundlePolling();
+    },
+    closeBundleModal() {
+      this.showBundleModal = false;
+      this.pendingLogin = false;
+      this.stopBundlePolling();
+    },
+    startBundlePolling() {
+      this.stopBundlePolling();
+      this.fetchBundleProgress();
+      this.bundlePollTimer = setInterval(() => {
+        this.fetchBundleProgress();
+      }, 1000);
+    },
+    stopBundlePolling() {
+      if (this.bundlePollTimer) {
+        clearInterval(this.bundlePollTimer);
+        this.bundlePollTimer = null;
+      }
+    },
+    formatBytes(value) {
+      if (!Number.isFinite(value) || value < 0) return '';
+      const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+      let size = value;
+      let unitIndex = 0;
+      while (size >= 1024 && unitIndex < units.length - 1) {
+        size /= 1024;
+        unitIndex += 1;
+      }
+      return `${size.toFixed(size >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+    },
+    async fetchBundleProgress() {
+      const endpoint = `${API_BASE_URL}/api/system/bundle-status`;
+      try {
+        const response = await axiosInstance.get(endpoint, { timeout: 5000 });
+        const payload = response?.data || {};
+        const progress = payload.progress || {};
+        const percent = Number(progress.percent);
+        const downloaded = Number(progress.downloaded_bytes);
+        const total = Number(progress.total_bytes);
+        if (payload.status === 'failed') {
+          this.bundleProgressText = payload.message || '行情数据下载失败，请检查网络后重试。';
+          this.stopBundlePolling();
+          return;
+        }
+
+        if (Number.isFinite(percent)) {
+          this.bundleProgressText = `下载进度：${percent.toFixed(1)}%`;
+        } else if (Number.isFinite(downloaded) && Number.isFinite(total) && total > 0) {
+          this.bundleProgressText = `已下载 ${this.formatBytes(downloaded)} / ${this.formatBytes(total)}`;
+        } else if (Number.isFinite(downloaded) && downloaded > 0) {
+          this.bundleProgressText = `已下载 ${this.formatBytes(downloaded)}`;
+        } else if (typeof payload.message === 'string' && payload.message.trim()) {
+          this.bundleProgressText = payload.message.trim();
+        } else {
+          this.bundleProgressText = '';
+        }
+        if (payload.status === 'ready') {
+          this.bundleProgressText = '行情数据已准备完成，可以登录。';
+          this.stopBundlePolling();
+          this.showBundleModal = false;
+          if (this.pendingLogin) {
+            this.pendingLogin = false;
+            await this.performLogin();
+          }
+        }
+      } catch (err) {
+        this.bundlePollFailures += 1;
+        if (this.bundlePollFailures >= 3) {
+          this.stopBundlePolling();
+          this.bundleProgressText = '';
+        }
+      }
+    },
+    async getBundleStatus() {
+      const endpoint = `${API_BASE_URL}/api/system/bundle-status`;
+      const response = await axiosInstance.get(endpoint, { timeout: 5000 });
+      return response?.data || {};
+    },
+    async ensureBundleReadyForLogin() {
+      try {
+        const payload = await this.getBundleStatus();
+        if (payload.status === 'ready') {
+          return true;
+        }
+      } catch (err) {
+        // Fall through to show modal and poll.
+      }
+      this.pendingLogin = true;
+      this.openBundleModal();
+      return false;
+    },
+    async performLogin() {
+      if (this.loginInProgress) return;
+      this.loginInProgress = true;
       this.isLoading = true;
       this.error = null;
 
@@ -141,20 +275,35 @@ export default {
           } else if (status === 400) {
             this.error = '请求参数错误';
           } else if (status === 502 || status === 503 || status === 504) {
-            this.error = '系统首次启动，RQAlpha 行情数据下载中，请稍后再试';
+            this.error = null;
+            this.pendingLogin = true;
+            this.openBundleModal();
           } else if (status === 500) {
             this.error = '服务器内部错误';
           } else {
             this.error = `登录失败，状态码：${status}`;
           }
         } else if (err.request) {
-          this.error = '系统首次启动，RQAlpha 行情数据下载中，请稍后再试';
+          this.error = null;
+          this.pendingLogin = true;
+          this.openBundleModal();
         } else {
           this.error = '登录失败，请稍后重试';
         }
       } finally {
         this.isLoading = false;
+        this.loginInProgress = false;
       }
+    },
+    async handleLogin() {
+      if (this.loginInProgress) return;
+      this.error = null;
+      const ready = await this.ensureBundleReadyForLogin();
+      if (!ready) {
+        this.isLoading = false;
+        return;
+      }
+      await this.performLogin();
     }
   }
 };
@@ -265,6 +414,115 @@ button {
 button:disabled {
   background: #a0cfff;
   cursor: not-allowed;
+}
+
+.bundle-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  padding: 24px;
+}
+
+.bundle-modal {
+  width: 100%;
+  max-width: 420px;
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.2);
+  overflow: hidden;
+}
+
+.bundle-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 10px;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.bundle-modal-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.bundle-modal-close {
+  background: transparent;
+  border: none;
+  font-size: 20px;
+  line-height: 1;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.bundle-modal-body {
+  padding: 20px;
+  text-align: center;
+}
+
+.bundle-modal-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  margin: 0 auto 12px;
+  border: 4px solid rgba(31, 111, 235, 0.2);
+  border-top-color: #1f6feb;
+  animation: bundle-spin 1.1s linear infinite;
+}
+
+.bundle-modal-message {
+  color: #1f2937;
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+
+.bundle-modal-progress {
+  color: #1e40af;
+  font-size: 13px;
+  margin: 0;
+}
+
+.bundle-modal-progress.muted {
+  color: #64748b;
+}
+
+.bundle-modal-footer {
+  padding: 0 20px 20px;
+  display: flex;
+  justify-content: center;
+}
+
+.bundle-modal-action {
+  background: #1f6feb;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 18px;
+  cursor: pointer;
+}
+
+.modal-fade-enter-active,
+.modal-fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.modal-fade-enter-from,
+.modal-fade-leave-to {
+  opacity: 0;
+}
+
+@keyframes bundle-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @media (max-width: 768px) {

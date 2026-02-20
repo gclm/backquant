@@ -6,9 +6,34 @@ IMAGE_BUNDLE_PATH="${RQALPHA_IMAGE_BUNDLE_PATH:-/opt/rqalpha/bundle}"
 BOOTSTRAP="${RQALPHA_BUNDLE_BOOTSTRAP:-1}"
 CRON_SCHEDULE="${RQALPHA_BUNDLE_CRON:-0 3 1 * *}"
 UPDATE_LOG="${RQALPHA_BUNDLE_LOG:-/data/rqalpha/bundle_update.log}"
+STATUS_FILE="${RQALPHA_BUNDLE_STATUS_FILE:-/data/rqalpha/bundle_status.json}"
+ASYNC_BOOTSTRAP="${RQALPHA_BUNDLE_ASYNC:-1}"
 
 warn() {
   echo "[entrypoint] $*" >&2
+}
+
+write_status() {
+  status="$1"
+  work_dir="$2"
+  message="$3"
+  timestamp="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+  meta_url="${BUNDLE_META_URL:-}"
+  meta_total="${BUNDLE_META_TOTAL_BYTES:-}"
+  if [ -n "$meta_total" ] && echo "$meta_total" | grep -qE '^[0-9]+$'; then
+    total_json="$meta_total"
+  else
+    total_json="null"
+  fi
+  if [ -n "$meta_url" ]; then
+    url_json="\"$meta_url\""
+  else
+    url_json="null"
+  fi
+  mkdir -p "$(dirname "$STATUS_FILE")"
+  cat > "$STATUS_FILE" <<EOF
+{"status":"$status","work_dir":"$work_dir","bundle_path":"$BUNDLE_PATH","message":"$message","updated_at":"$timestamp","url":$url_json,"total_bytes":$total_json}
+EOF
 }
 
 supports_data_path() {
@@ -22,6 +47,63 @@ supports_data_path() {
     return 0
   fi
   echo ""
+}
+
+resolve_bundle_meta() {
+  if [ -n "${BUNDLE_META_RESOLVED:-}" ]; then
+    return 0
+  fi
+  BUNDLE_META_RESOLVED="1"
+  meta="$(
+    python - <<'PY'
+import os
+from datetime import datetime
+import urllib.request
+
+explicit = os.environ.get("RQALPHA_BUNDLE_URL", "").strip()
+base = os.environ.get("RQALPHA_BUNDLE_URL_BASE", "http://bundle.assets.ricequant.com/bundles_v4").strip()
+
+def candidates():
+    if explicit:
+        return [explicit]
+    if not base:
+        return []
+    now = datetime.utcnow()
+    year = now.year
+    month = now.month
+    urls = []
+    for _ in range(12):
+        urls.append(f"{base}/rqbundle_{year}{month:02d}.tar.bz2")
+        month -= 1
+        if month <= 0:
+            month = 12
+            year -= 1
+    return urls
+
+def head_length(url):
+    request = urllib.request.Request(url, method="HEAD")
+    with urllib.request.urlopen(request, timeout=5) as response:
+        length = response.headers.get("Content-Length")
+    return int(length) if length else None
+
+url = ""
+total = ""
+for candidate in candidates():
+    try:
+        length = head_length(candidate)
+    except Exception:
+        continue
+    if length and length > 0:
+        url = candidate
+        total = str(length)
+        break
+
+print(url)
+print(total)
+PY
+  )" || return 0
+  BUNDLE_META_URL="$(printf '%s' "$meta" | sed -n '1p')"
+  BUNDLE_META_TOTAL_BYTES="$(printf '%s' "$meta" | sed -n '2p')"
 }
 
 copy_default_bundle_if_needed() {
@@ -79,6 +161,7 @@ download_bundle() {
       prepare_bundle_dir
       cp -a "$IMAGE_BUNDLE_PATH"/. "$BUNDLE_PATH"/
       if bundle_is_ready "$BUNDLE_PATH"; then
+        write_status "ready" "" "bundle ready"
         return 0
       fi
     fi
@@ -94,6 +177,8 @@ download_bundle() {
         download_bundle_dir="$download_parent/bundle"
         use_temp_download="1"
       fi
+      resolve_bundle_meta
+      write_status "downloading" "$download_bundle_dir" "bundle downloading"
       if ! rqalpha download-bundle "$flag" "$download_parent"; then
         warn "rqalpha download-bundle failed; falling back to default bundle path."
         prepare_bundle_dir
@@ -102,6 +187,8 @@ download_bundle() {
       fi
     else
       prepare_bundle_dir
+      resolve_bundle_meta
+      write_status "downloading" "$BUNDLE_PATH" "bundle downloading"
       rqalpha download-bundle
       copy_default_bundle_if_needed
     fi
@@ -111,11 +198,13 @@ download_bundle() {
     fi
     if bundle_needs_bootstrap; then
       warn "RQAlpha bundle download did not complete; exiting."
+      write_status "failed" "$download_bundle_dir" "bundle download failed"
       return 1
     fi
     if [ -d "$bundle_arg/bundle" ]; then
       cp -a "$bundle_arg/bundle"/. "$BUNDLE_PATH"/
     fi
+    write_status "ready" "" "bundle ready"
   fi
 }
 
@@ -172,8 +261,16 @@ if ! command -v rqalpha >/dev/null 2>&1; then
   warn "rqalpha is not installed; skipping bundle bootstrap."
 else
   if [ "$BOOTSTRAP" != "0" ] && [ "$BOOTSTRAP" != "false" ]; then
-    if ! download_bundle; then
-      exit 1
+    if [ "$ASYNC_BOOTSTRAP" = "1" ] || [ "$ASYNC_BOOTSTRAP" = "true" ]; then
+      download_bundle &
+    else
+      if ! download_bundle; then
+        exit 1
+      fi
+    fi
+  else
+    if bundle_is_ready "$BUNDLE_PATH"; then
+      write_status "ready" "" "bundle ready"
     fi
   fi
   setup_cron

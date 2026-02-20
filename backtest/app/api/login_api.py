@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import hmac
+from pathlib import Path
 
 from flask import Blueprint, current_app, jsonify, request
 
 from app.auth import generate_auth_token
 
 bp_login = Blueprint("bp_login", __name__)
+
+_BUNDLE_REQUIRED_FILES = ("future_info.json", "instruments.pk", "trading_dates.npy")
 
 
 def _error_response(http_status: int, code: str, message: str):
@@ -36,6 +39,23 @@ def _parse_login_form() -> tuple[str, str]:
 
 def _invalid_credentials():
     return _error_response(401, "UNAUTHORIZED", "invalid credentials")
+
+def _bundle_is_ready(bundle_path: Path) -> bool:
+    if not bundle_path.exists() or not bundle_path.is_dir():
+        return False
+    try:
+        if not any(bundle_path.iterdir()):
+            return False
+    except OSError:
+        return False
+    for filename in _BUNDLE_REQUIRED_FILES:
+        candidate = bundle_path / filename
+        try:
+            if not candidate.is_file() or candidate.stat().st_size <= 0:
+                return False
+        except OSError:
+            return False
+    return True
 
 
 def _verify_bcrypt_password(password: str, password_hash: str) -> tuple[bool, tuple | None]:
@@ -81,4 +101,7 @@ def api_login():
     mobile, password = _parse_login_form()
     if not mobile or not password:
         return _error_response(400, "INVALID_ARGUMENT", "mobile and password are required")
+    bundle_path = Path(current_app.config.get("RQALPHA_BUNDLE_PATH") or "").expanduser()
+    if not bundle_path or not _bundle_is_ready(bundle_path):
+        return _error_response(503, "BUNDLE_NOT_READY", "bundle is downloading")
     return _local_login(mobile, password)
