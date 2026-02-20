@@ -42,7 +42,6 @@
         <div class="note">
           <div class="note-title">说明</div>
           <ul>
-            <li>字段以现有后端接口 <span class="mono">POST /api/backtest/run</span> 支持为准。</li>
             <li v-if="warning" class="warn">{{ warning }}</li>
           </ul>
         </div>
@@ -299,4 +298,3 @@ export default {
   color: #fff;
 }
 </style>
-

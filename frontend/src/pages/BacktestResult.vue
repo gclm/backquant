@@ -63,9 +63,6 @@
           <div class="panel-body">
             <div v-if="jobStatus !== 'FINISHED'" class="inline-hint">
               <div class="hint-title">回测进行中</div>
-              <div class="hint-sub">
-                当前仅基于 <span class="mono">GET /api/backtest/jobs/:id</span> 轮询状态；若需“实时曲线/实时指标”，需要后端提供增量结果接口。
-              </div>
               <div class="progress">
                 <div class="bar" :style="{ width: jobProgressPercent + '%' }" />
               </div>
