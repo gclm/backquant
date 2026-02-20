@@ -35,6 +35,25 @@ _NOTEBOOK_DEFAULT_INIT_CASH = 100000
 _NOTEBOOK_DEFAULT_BENCHMARK = "000300.XSHG"
 _NOTEBOOK_DEFAULT_OUTPUT_ROOT = Path("research") / "artifacts" / "backtests"
 _NOTEBOOK_LOGGER_NAME = "backtest.research.runner"
+_DEFAULT_DEMO_STRATEGY_ID = "demo"
+_DEFAULT_DEMO_STRATEGY_CODE = textwrap.dedent(
+    """\
+    # RQAlpha 默认策略示例
+    from rqalpha.api import *
+
+    def init(context):
+        # 选择一个股票（平安银行）
+        context.s1 = "000001.XSHE"
+
+    def handle_bar(context, bar_dict):
+        # 如果当前没有持仓
+        position = context.portfolio.positions[context.s1]
+
+        if position.quantity == 0:
+            # 用全部资金买入
+            order_percent(context.s1, 1.0)
+    """
+)
 
 _PROCESS_LOCK = threading.Lock()
 _RUNNING_PROCESSES: dict[str, subprocess.Popen] = {}
@@ -213,9 +232,25 @@ def _storage_dirs() -> dict[str, Path]:
 
 def _write_json(path: Path, payload: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = path.with_suffix(f"{path.suffix}.tmp")
-    tmp_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
-    tmp_path.replace(path)
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            "w",
+            encoding="utf-8",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as tmp_file:
+            tmp_file.write(json.dumps(payload, ensure_ascii=False))
+            tmp_path = Path(tmp_file.name)
+        tmp_path.replace(path)
+    finally:
+        if tmp_path is not None and tmp_path.exists():
+            try:
+                tmp_path.unlink()
+            except OSError:
+                pass
 
 
 def _validate_strategy_id(strategy_id: str) -> str:
@@ -539,6 +574,18 @@ def save_strategy(strategy_id: str, code: str) -> Path:
     if not existed_before:
         _write_strategy_created_at(path, _now_utc_iso8601())
     return path
+
+
+def ensure_default_demo_strategy() -> bool:
+    try:
+        path = _strategy_path(_DEFAULT_DEMO_STRATEGY_ID)
+    except Exception:
+        logging.getLogger(__name__).exception("failed to resolve demo strategy path")
+        return False
+    if path.exists():
+        return False
+    save_strategy(_DEFAULT_DEMO_STRATEGY_ID, _DEFAULT_DEMO_STRATEGY_CODE)
+    return True
 
 
 def load_strategy(strategy_id: str) -> str:

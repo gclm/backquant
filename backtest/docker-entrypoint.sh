@@ -2,6 +2,7 @@
 set -eu
 
 BUNDLE_PATH="${RQALPHA_BUNDLE_PATH:-/data/rqalpha/bundle}"
+IMAGE_BUNDLE_PATH="${RQALPHA_IMAGE_BUNDLE_PATH:-/opt/rqalpha/bundle}"
 BOOTSTRAP="${RQALPHA_BUNDLE_BOOTSTRAP:-1}"
 CRON_SCHEDULE="${RQALPHA_BUNDLE_CRON:-0 3 1 * *}"
 UPDATE_LOG="${RQALPHA_BUNDLE_LOG:-/data/rqalpha/bundle_update.log}"
@@ -30,16 +31,90 @@ copy_default_bundle_if_needed() {
   fi
 }
 
+bundle_is_ready() {
+  bundle_path="$1"
+  if [ -z "$bundle_path" ]; then
+    return 1
+  fi
+  if [ ! -d "$bundle_path" ]; then
+    return 1
+  fi
+  if [ -z "$(ls -A "$bundle_path" 2>/dev/null)" ]; then
+    return 1
+  fi
+  for f in future_info.json instruments.pk trading_dates.npy; do
+    if [ ! -s "$bundle_path/$f" ]; then
+      return 1
+    fi
+  done
+  return 0
+}
+
+bundle_needs_bootstrap() {
+  if bundle_is_ready "$BUNDLE_PATH"; then
+    return 1
+  fi
+  return 0
+}
+
+bundle_arg_for_cli() {
+  case "$BUNDLE_PATH" in
+    */bundle) echo "$(dirname "$BUNDLE_PATH")" ;;
+    *) echo "$BUNDLE_PATH" ;;
+  esac
+}
+
+prepare_bundle_dir() {
+  if [ -d "$BUNDLE_PATH" ] && [ -n "$(ls -A "$BUNDLE_PATH" 2>/dev/null)" ]; then
+    warn "RQAlpha bundle incomplete; clearing existing bundle contents before download"
+    rm -rf "$BUNDLE_PATH"/* "$BUNDLE_PATH"/.[!.]* "$BUNDLE_PATH"/..?* 2>/dev/null || true
+  fi
+  mkdir -p "$BUNDLE_PATH"
+}
+
 download_bundle() {
-  if [ ! -d "$BUNDLE_PATH" ] || [ -z "$(ls -A "$BUNDLE_PATH" 2>/dev/null)" ]; then
-    mkdir -p "$BUNDLE_PATH"
-    warn "RQAlpha bundle missing; downloading to $BUNDLE_PATH (first start may take a while)."
+  if bundle_needs_bootstrap; then
+    if bundle_is_ready "$IMAGE_BUNDLE_PATH"; then
+      warn "RQAlpha bundle missing; copying from image bundle at $IMAGE_BUNDLE_PATH."
+      prepare_bundle_dir
+      cp -a "$IMAGE_BUNDLE_PATH"/. "$BUNDLE_PATH"/
+      if bundle_is_ready "$BUNDLE_PATH"; then
+        return 0
+      fi
+    fi
+    warn "RQAlpha bundle missing or incomplete; downloading to $BUNDLE_PATH (first start may take a while)."
     flag="$(supports_data_path download-bundle)"
+    bundle_arg="$(bundle_arg_for_cli)"
+    download_parent="$bundle_arg"
+    download_bundle_dir="$bundle_arg/bundle"
+    use_temp_download="0"
     if [ -n "$flag" ]; then
-      rqalpha download-bundle "$flag" "$BUNDLE_PATH"
+      if [ -e "$BUNDLE_PATH" ]; then
+        download_parent="$(mktemp -d /tmp/rqalpha-bundle-XXXXXX)"
+        download_bundle_dir="$download_parent/bundle"
+        use_temp_download="1"
+      fi
+      if ! rqalpha download-bundle "$flag" "$download_parent"; then
+        warn "rqalpha download-bundle failed; falling back to default bundle path."
+        prepare_bundle_dir
+        rqalpha download-bundle
+        copy_default_bundle_if_needed
+      fi
     else
+      prepare_bundle_dir
       rqalpha download-bundle
       copy_default_bundle_if_needed
+    fi
+    if [ "$use_temp_download" = "1" ] && [ -d "$download_bundle_dir" ]; then
+      prepare_bundle_dir
+      cp -a "$download_bundle_dir"/. "$BUNDLE_PATH"/
+    fi
+    if bundle_needs_bootstrap; then
+      warn "RQAlpha bundle download did not complete; exiting."
+      return 1
+    fi
+    if [ -d "$bundle_arg/bundle" ]; then
+      cp -a "$bundle_arg/bundle"/. "$BUNDLE_PATH"/
     fi
   fi
 }
@@ -51,8 +126,13 @@ update_bundle() {
   fi
 
   flag="$(supports_data_path "$update_subcmd")"
+  bundle_arg="$(bundle_arg_for_cli)"
   if [ -n "$flag" ]; then
-    rqalpha "$update_subcmd" "$flag" "$BUNDLE_PATH"
+    if ! rqalpha "$update_subcmd" "$flag" "$bundle_arg"; then
+      warn "rqalpha $update_subcmd failed; falling back to default bundle path."
+      rqalpha "$update_subcmd"
+      copy_default_bundle_if_needed
+    fi
   else
     rqalpha "$update_subcmd"
     copy_default_bundle_if_needed
@@ -92,7 +172,9 @@ if ! command -v rqalpha >/dev/null 2>&1; then
   warn "rqalpha is not installed; skipping bundle bootstrap."
 else
   if [ "$BOOTSTRAP" != "0" ] && [ "$BOOTSTRAP" != "false" ]; then
-    download_bundle
+    if ! download_bundle; then
+      exit 1
+    fi
   fi
   setup_cron
 fi

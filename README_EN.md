@@ -11,7 +11,10 @@ This repository includes a backend (Flask + RQAlpha) and a frontend (Vue 3), plu
 sudo curl -fsSL https://get.docker.com | sh
 ```
 
-### Start
+### Install & Start (Docker Compose)
+
+Docker Compose uses a named volume for the RQAlpha bundle (`rqalpha_bundle`). The download happens in the container entrypoint:
+on first start it downloads to `/data/rqalpha/bundle`, and subsequent starts reuse the same volume without re-downloading.
 
 ```bash
 cp .env.example .env
@@ -23,10 +26,11 @@ docker compose up --build -d
 - The Docker image already includes RQAlpha (`rqalpha==6.1.2`).
 - The image also preinstalls common quant libraries: `numpy`, `pandas`, `statsmodels`, `scikit-learn` (`datetime`/`math` are Python standard libraries).
 - A default `demo` strategy is preloaded and can be run directly from the strategy list.
-- On first start, the RQAlpha daily data bundle is downloaded to `/data/rqalpha/bundle` (a persistent volume). This may take a few minutes.
+- On first start, the container will download the bundle to `/data/rqalpha/bundle` (persistent volume). This may take a few minutes.
 - The daily bundle is updated monthly: on container start, a cron entry is created (`/etc/cron.d/rqalpha-bundle`, default is 03:00 on the 1st of each month).
 - To change the schedule, set `RQALPHA_BUNDLE_CRON` (for example `0 4 1 * *`).
 - To disable auto updates, set `RQALPHA_BUNDLE_CRON=off`.
+- To skip the first-time download, set `RQALPHA_BUNDLE_BOOTSTRAP=0` (only recommended if you already have a bundle prepared).
 
 ### Access
 

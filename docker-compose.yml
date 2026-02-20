@@ -46,6 +46,7 @@ services:
       --ServerApp.allow_origin=*
       --ServerApp.allow_credentials=True
     volumes:
+      - rqalpha_bundle:/data/rqalpha/bundle
       - notebooks:/data/notebooks
     restart: unless-stopped
 
