@@ -107,6 +107,7 @@ class DevelopmentConfig(Config):
 
 CONFIG = {
     "product": ProductionConfig,
+    "production": ProductionConfig,
     "development": DevelopmentConfig,
     "default": DevelopmentConfig,
 }
