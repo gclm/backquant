@@ -27,6 +27,7 @@ docker compose up --build -d
 - The image also preinstalls common quant libraries: `numpy`, `pandas`, `statsmodels`, `scikit-learn` (`datetime`/`math` are Python standard libraries).
 - A default `demo` strategy is preloaded and can be run directly from the strategy list.
 - On first start, the container will download the bundle to `/data/rqalpha/bundle` (persistent volume). This may take a few minutes.
+- Daily data covers 2005-01 through 2026-02; the archive is about 1 GB. Download and extraction can take a while. After Docker build completes, wait for the bundle download to finish before logging in.
 - The daily bundle is updated monthly: on container start, a cron entry is created (`/etc/cron.d/rqalpha-bundle`, default is 03:00 on the 1st of each month).
 - To change the schedule, set `RQALPHA_BUNDLE_CRON` (for example `0 4 1 * *`).
 - To disable auto updates, set `RQALPHA_BUNDLE_CRON=off`.
