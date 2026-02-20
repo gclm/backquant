@@ -28,7 +28,7 @@ docker compose up --build
 
 ### 访问
 
-- 前端：`http://localhost:8080`
+- 前端：`http://localhost:8088`
 - 首次登录账号/密码：`13800138000` / `pass123456`（可在 `.env` 中修改）
 
 说明：后端 API 与 Jupyter 已通过同域路径反向代理（`/api`、`/jupyter`），一般无需单独访问端口。

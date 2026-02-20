@@ -28,7 +28,7 @@ docker compose up --build
 
 ### Access
 
-- Frontend: `http://localhost:8080`
+- Frontend: `http://localhost:8088`
 - First login credentials: `13800138000` / `pass123456` (change in `.env`)
 
 Note: Backend API and Jupyter are reverse-proxied under the same domain (`/api`, `/jupyter`), so you typically do not need to access their ports directly.
