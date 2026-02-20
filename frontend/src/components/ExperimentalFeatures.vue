@@ -140,13 +140,15 @@ export default {
             this.error = '用户名或密码错误';
           } else if (status === 400) {
             this.error = '请求参数错误';
+          } else if (status === 502 || status === 503 || status === 504) {
+            this.error = '系统首次启动，RQAlpha 行情数据下载中，请稍后再试';
           } else if (status === 500) {
             this.error = '服务器内部错误';
           } else {
             this.error = `登录失败，状态码：${status}`;
           }
         } else if (err.request) {
-          this.error = '网络连接失败，请检查网络';
+          this.error = '系统首次启动，RQAlpha 行情数据下载中，请稍后再试';
         } else {
           this.error = '登录失败，请稍后重试';
         }
