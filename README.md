@@ -46,7 +46,7 @@ docker compose up --build -d
 
 ### 系统截图
 
-![Screenshot 0](images/screen0.png)
+![Screenshot 0](images/screen3.png)
 ![Screenshot 1](images/screen1.png)
 ![Screenshot 2](images/screen2.png)
 
