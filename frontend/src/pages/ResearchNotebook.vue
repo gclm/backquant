@@ -168,10 +168,15 @@ function normalizeSession(payload) {
 }
 
 function toAbsoluteUrl(rawUrl) {
-  const raw = String(rawUrl || '').trim();
+  let raw = String(rawUrl || '').trim();
   if (!raw) {
     return '';
   }
+
+  // 解决 Mac 浏览器跳到 http://localhost:8088/... 的问题
+  raw = raw.replace(/^https?:\/\/(localhost|127\.0\.0\.1):8088\/jupyter\/?/i, '/jupyter/');
+  raw = raw.replace(/^https?:\/\/(localhost|127\.0\.0\.1):8088\/?/i, '/');
+
   try {
     if (typeof window !== 'undefined' && window.location) {
       return new URL(raw, window.location.origin).toString();
