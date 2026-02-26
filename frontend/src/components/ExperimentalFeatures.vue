@@ -1,22 +1,6 @@
 <template>
   <div class="login-page">
     <div class="login-container">
-      <div class="system-features">
-        <div class="feature-item">
-          <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-          </svg>
-          <span class="feature-text">本地部署</span>
-        </div>
-        <div class="feature-item">
-          <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-          </svg>
-          <span class="feature-text">开源安全</span>
-        </div>
-      </div>
-
       <div class="login-card">
         <div class="system-brand">
           <img
@@ -80,6 +64,20 @@
           {{ isLoading ? '登录中...' : '登录' }}
         </button>
       </form>
+
+      <div class="feature-badge feature-badge-left">
+        <svg class="feature-icon" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+        </svg>
+        <span class="feature-text">本地部署</span>
+      </div>
+
+      <div class="feature-badge feature-badge-right">
+        <svg class="feature-icon" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+        </svg>
+        <span class="feature-text">开源安全</span>
+      </div>
     </div>
     </div>
 
@@ -367,9 +365,9 @@ export default {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
   width: 100%;
   max-width: 480px;
+  position: relative;
 }
 
 .login-card {
@@ -379,6 +377,7 @@ export default {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   border: 1px solid #e0e0e0;
   padding: 32px;
+  position: relative;
 }
 
 .system-brand {
@@ -403,36 +402,45 @@ export default {
   letter-spacing: 0.3px;
 }
 
-.system-features {
-  display: flex;
-  gap: 48px;
-  padding: 0;
-  background: transparent;
-  border: none;
-  width: 100%;
-  justify-content: center;
-  margin-bottom: 20px;
+.feature-badge {
+  position: absolute;
+  bottom: -28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  background: rgba(25, 118, 210, 0.08);
+  border-radius: 12px;
+  font-size: 12px;
+  color: rgba(25, 118, 210, 0.85);
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  transition: all 0.2s ease;
 }
 
-.feature-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: #666;
-  font-weight: 400;
+.feature-badge:hover {
+  background: rgba(25, 118, 210, 0.12);
+  color: rgba(25, 118, 210, 1);
+}
+
+.feature-badge-left {
+  left: 0;
+}
+
+.feature-badge-right {
+  right: 0;
 }
 
 .feature-icon {
-  width: 16px;
-  height: 16px;
-  color: #666;
+  width: 13px;
+  height: 13px;
   flex-shrink: 0;
+  opacity: 0.9;
 }
 
 .feature-text {
-  font-weight: 400;
-  letter-spacing: 0.3px;
+  font-weight: 500;
+  line-height: 1;
 }
 
 .login-form {
