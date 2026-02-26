@@ -85,7 +85,6 @@
       </div>
     </div>
     </div>
-    </div>
 
     <transition name="modal-fade">
       <div v-if="showBundleModal" class="bundle-modal-overlay">
