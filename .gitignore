@@ -27,3 +27,23 @@ Thumbs.db
 ._*
 .vscode/
 .idea/
+
+artifacts/
+outputs/
+reports/
+
+# 临时文件
+.bmad-state.json
+bmad.log
+
+.bmad-temp/
+.bmad-cache/
+*.bmad.log
+
+# =====================
+# Claude
+# =====================
+
+.claude
+.claude/cache/
+.claude/tmp/

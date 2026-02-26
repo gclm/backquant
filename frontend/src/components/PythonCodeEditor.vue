@@ -16,14 +16,29 @@
           spellcheck="false"
           @input="handleInput"
           @scroll="syncScroll"
-          @keydown.tab.prevent="insertTab"
+          @keydown.tab.prevent="handleTab"
+          @keydown.enter.prevent="handleEnter"
+          @keydown.space="handleSpace"
         ></textarea>
       </div>
     </div>
+
+    <!-- Completion Popup (lazy-loaded) -->
+    <CompletionPopup
+      v-if="completionPopupLoaded"
+      :visible="showCompletion"
+      :items="completionItems"
+      :position="completionPosition"
+      @select="insertCompletion"
+      @close="hideCompletionPopup"
+    />
   </div>
 </template>
 
 <script>
+import { defineAsyncComponent } from 'vue';
+import { useEditorFeatureFlags } from '@/composables/useEditorFeatureFlags';
+
 const KEYWORDS = new Set([
   'False', 'None', 'True', 'and', 'as', 'assert', 'async', 'await', 'break', 'class', 'continue',
   'def', 'del', 'elif', 'else', 'except', 'finally', 'for', 'from', 'global', 'if', 'import',
@@ -106,6 +121,9 @@ function renderHighlighted(code) {
 
 export default {
   name: 'PythonCodeEditor',
+  components: {
+    CompletionPopup: defineAsyncComponent(() => import('./CompletionPopup.vue'))
+  },
   props: {
     modelValue: {
       type: String,
@@ -121,6 +139,18 @@ export default {
     }
   },
   emits: ['update:modelValue'],
+  data() {
+    return {
+      featureFlags: null,
+      performanceMonitor: null,
+      autoIndent: null,
+      codeCompletion: null,
+      completionPopupLoaded: false,
+      showCompletion: false,
+      completionItems: [],
+      completionPosition: { top: 0, left: 0 }
+    };
+  },
   computed: {
     lineCount() {
       return Math.max(1, (this.modelValue || '').split('\n').length);
@@ -134,12 +164,61 @@ export default {
       };
     }
   },
+  async mounted() {
+    // Initialize feature flags
+    this.featureFlags = useEditorFeatureFlags();
+
+    // Lazy load performance monitoring if enabled
+    if (this.featureFlags.isEnabled('performanceMonitoring')) {
+      const { usePerformanceMonitor } = await import('@/composables/usePerformanceMonitor');
+      this.performanceMonitor = usePerformanceMonitor();
+    }
+
+    // Lazy load auto-indent if enabled
+    if (this.featureFlags.isEnabled('autoIndent')) {
+      const { useAutoIndent } = await import('@/composables/useAutoIndent');
+      this.autoIndent = useAutoIndent();
+    }
+
+    // Lazy load code completion if enabled
+    if (this.featureFlags.isEnabled('codeCompletion')) {
+      const { useCodeCompletion } = await import('@/composables/useCodeCompletion');
+      this.codeCompletion = useCodeCompletion();
+      this.completionPopupLoaded = true;
+    }
+  },
   methods: {
     handleInput(event) {
       if (this.readOnly) {
         return;
       }
+
+      const startTime = performance.now();
       this.$emit('update:modelValue', event.target.value);
+
+      // Record performance metric
+      if (this.performanceMonitor) {
+        const latency = performance.now() - startTime;
+        this.performanceMonitor.recordMetric('inputLatency', latency);
+      }
+
+      // Trigger code completion
+      if (this.codeCompletion && !this.readOnly) {
+        const textarea = this.$refs.textarea;
+        this.codeCompletion.triggerCompletion(
+          event.target.value,
+          textarea.selectionStart,
+          (items) => {
+            if (items.length > 0) {
+              this.completionItems = items;
+              this.updateCompletionPosition();
+              this.showCompletion = true;
+            } else {
+              this.showCompletion = false;
+            }
+          }
+        );
+      }
     },
     syncScroll(event) {
       if (this.$refs.highlight) {
@@ -150,25 +229,165 @@ export default {
         this.$refs.lineNumbers.scrollTop = event.target.scrollTop;
       }
     },
-    insertTab() {
+    handleTab(event) {
       if (this.readOnly) {
         return;
       }
+
+      // If completion is showing, let it handle Tab
+      if (this.showCompletion) {
+        return;
+      }
+
       const textarea = this.$refs.textarea;
       if (!textarea) {
         return;
       }
 
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      const original = this.modelValue || '';
-      const nextValue = `${original.slice(0, start)}    ${original.slice(end)}`;
+      // Use auto-indent if available
+      if (this.autoIndent) {
+        const result = this.autoIndent.handleTabKey(
+          textarea,
+          this.modelValue || '',
+          event.shiftKey
+        );
 
-      this.$emit('update:modelValue', nextValue);
+        if (result) {
+          this.$emit('update:modelValue', result.value);
+          this.$nextTick(() => {
+            if (result.cursorPos !== undefined) {
+              textarea.selectionStart = textarea.selectionEnd = result.cursorPos;
+            } else if (result.selectionStart !== undefined) {
+              textarea.selectionStart = result.selectionStart;
+              textarea.selectionEnd = result.selectionEnd;
+            }
+          });
+        }
+      } else {
+        // Fallback to simple tab insertion
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const original = this.modelValue || '';
+        const nextValue = `${original.slice(0, start)}    ${original.slice(end)}`;
 
+        this.$emit('update:modelValue', nextValue);
+
+        this.$nextTick(() => {
+          textarea.selectionStart = textarea.selectionEnd = start + 4;
+        });
+      }
+    },
+    handleEnter() {
+      if (this.readOnly) {
+        return;
+      }
+
+      // If completion is showing, let it handle Enter
+      if (this.showCompletion) {
+        return;
+      }
+
+      const textarea = this.$refs.textarea;
+      if (!textarea) {
+        return;
+      }
+
+      // Use auto-indent if available
+      if (this.autoIndent) {
+        const result = this.autoIndent.handleEnterKey(textarea, this.modelValue || '');
+
+        if (result) {
+          this.$emit('update:modelValue', result.value);
+          this.$nextTick(() => {
+            textarea.selectionStart = textarea.selectionEnd = result.cursorPos;
+          });
+        }
+      } else {
+        // Fallback to simple newline
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const original = this.modelValue || '';
+        const nextValue = `${original.slice(0, start)}\n${original.slice(end)}`;
+
+        this.$emit('update:modelValue', nextValue);
+
+        this.$nextTick(() => {
+          textarea.selectionStart = textarea.selectionEnd = start + 1;
+        });
+      }
+    },
+    handleSpace() {
+      if (this.readOnly || !this.autoIndent) {
+        return;
+      }
+
+      // Check for dedent keywords after space
       this.$nextTick(() => {
-        textarea.selectionStart = textarea.selectionEnd = start + 4;
+        const textarea = this.$refs.textarea;
+        if (!textarea) {
+          return;
+        }
+
+        const result = this.autoIndent.handleDedentKeyword(textarea, this.modelValue || '');
+        if (result) {
+          this.$emit('update:modelValue', result.value);
+          this.$nextTick(() => {
+            textarea.selectionStart = textarea.selectionEnd = result.cursorPos;
+          });
+        }
       });
+    },
+    updateCompletionPosition() {
+      const textarea = this.$refs.textarea;
+      if (!textarea) {
+        return;
+      }
+
+      // Get cursor position in textarea
+      const cursorPos = textarea.selectionStart;
+      const textBeforeCursor = this.modelValue.substring(0, cursorPos);
+      const lines = textBeforeCursor.split('\n');
+      const currentLine = lines.length;
+      const currentCol = lines[lines.length - 1].length;
+
+      // Calculate pixel position (approximate)
+      const lineHeight = 20.8; // From CSS
+      const charWidth = 7.8; // Approximate monospace char width
+      const padding = 12; // From CSS
+
+      const rect = textarea.getBoundingClientRect();
+      const top = rect.top + (currentLine - 1) * lineHeight + lineHeight + padding - textarea.scrollTop;
+      const left = rect.left + currentCol * charWidth + padding + 48 - textarea.scrollLeft; // 48 = line numbers width
+
+      this.completionPosition = { top, left };
+    },
+    insertCompletion(item) {
+      if (!this.codeCompletion) {
+        return;
+      }
+
+      const textarea = this.$refs.textarea;
+      if (!textarea) {
+        return;
+      }
+
+      const result = this.codeCompletion.insertCompletion(
+        this.modelValue || '',
+        textarea.selectionStart,
+        item
+      );
+
+      this.$emit('update:modelValue', result.text);
+      this.$nextTick(() => {
+        textarea.selectionStart = textarea.selectionEnd = result.cursorPos;
+        textarea.focus();
+      });
+
+      this.hideCompletionPopup();
+    },
+    hideCompletionPopup() {
+      this.showCompletion = false;
+      this.completionItems = [];
     }
   }
 };
