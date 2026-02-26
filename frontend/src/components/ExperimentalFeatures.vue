@@ -1,6 +1,17 @@
 <template>
   <div class="login-page">
     <div class="login-container">
+      <div class="system-features">
+        <div class="feature-item">
+          <span class="feature-icon">🔒</span>
+          <span class="feature-text">本地部署</span>
+        </div>
+        <div class="feature-item">
+          <span class="feature-icon">🛡️</span>
+          <span class="feature-text">开源安全</span>
+        </div>
+      </div>
+
       <div class="login-card">
         <div class="system-brand">
           <img
@@ -64,17 +75,6 @@
           {{ isLoading ? '登录中...' : '登录' }}
         </button>
       </form>
-    </div>
-
-    <div class="system-features">
-      <div class="feature-item">
-        <span class="feature-icon">🔒</span>
-        <span class="feature-text">本地部署</span>
-      </div>
-      <div class="feature-item">
-        <span class="feature-icon">🛡️</span>
-        <span class="feature-text">开源安全</span>
-      </div>
     </div>
     </div>
 

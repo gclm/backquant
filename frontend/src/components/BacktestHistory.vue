@@ -33,11 +33,11 @@
             <option value="CANCELLED">CANCELLED</option>
             <option value="FINISHED">FINISHED</option>
           </select>
-          <button class="btn btn-secondary" :disabled="jobsLoading || !selectedStrategyId" @click="handleRefresh">
+          <button class="btn btn-secondary btn-no-radius" :disabled="jobsLoading || !selectedStrategyId" @click="handleRefresh">
             {{ jobsLoading ? '查询中...' : '查询' }}
           </button>
         </div>
-        <button class="btn btn-secondary btn-mini" type="button" @click="handleGoBack">返回上一页</button>
+        <button class="btn btn-secondary btn-mini btn-no-radius" type="button" @click="handleGoBack">返回上一页</button>
       </div>
 
       <p v-if="listError" class="error-line">{{ listError }}</p>
@@ -1703,6 +1703,7 @@ export default {
   border-bottom: none;
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 0;
+  margin-bottom: 16px;
 }
 
 .panel-title-row {
@@ -1915,10 +1916,14 @@ export default {
 
 .btn {
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: 2px;
   cursor: pointer;
   padding: 8px 12px;
   font-size: 13px;
+}
+
+.btn-no-radius {
+  border-radius: 0;
 }
 
 .btn-mini {
@@ -1975,6 +1980,8 @@ export default {
   justify-content: space-between;
   gap: 8px;
   margin-bottom: 10px;
+  margin-top: 12px;
+  padding: 0 16px;
 }
 
 .detail-time-row {
@@ -1990,6 +1997,7 @@ export default {
   grid-template-columns: 180px minmax(0, 1fr);
   gap: 12px;
   align-items: start;
+  padding: 16px;
 }
 
 .detail-nav {
@@ -2045,30 +2053,33 @@ export default {
 
 .performance-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  max-height: calc(100vh - 400px);
+  overflow-y: auto;
 }
 
 .performance-card {
-  min-height: 86px;
+  min-height: 70px;
+  padding: 8px;
 }
 
 .summary-card {
   border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  border-radius: 6px;
   padding: 10px;
   background: #fafcff;
 }
 
 .summary-key {
   color: #6b7280;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .summary-value {
-  margin-top: 6px;
+  margin-top: 4px;
   color: #111827;
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 700;
 }
 

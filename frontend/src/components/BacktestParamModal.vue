@@ -39,11 +39,8 @@
           </div>
         </div>
 
-        <div class="note">
-          <div class="note-title">说明</div>
-          <ul>
-            <li v-if="warning" class="warn">{{ warning }}</li>
-          </ul>
+        <div v-if="warning" class="warning-box">
+          {{ warning }}
         </div>
       </div>
 
@@ -253,29 +250,14 @@ export default {
   border-color: #1976d2;
 }
 
-.note {
+.warning-box {
   margin-top: 12px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid #ef5350;
   border-radius: 2px;
-  background: #f5f5f5;
+  background: #ffebee;
   padding: 10px 12px;
-  color: #666;
-  font-size: 12px;
-}
-
-.note-title {
-  font-weight: 600;
-  margin-bottom: 6px;
-  color: #000;
-}
-
-.note ul {
-  margin: 0;
-  padding-left: 18px;
-}
-
-.warn {
   color: #d32f2f;
+  font-size: 12px;
   font-weight: 600;
 }
 

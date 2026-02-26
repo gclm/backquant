@@ -376,7 +376,7 @@ body {
 
 .app-layout {
   display: flex;
-  min-height: calc(100vh - 64px);
+  min-height: calc(100vh - 48px);
 }
 
 .sidebar {
@@ -452,6 +452,8 @@ body {
   flex: 1;
   min-width: 0;
   padding: 16px;
+  display: flex;
+  flex-direction: column;
 }
 
 .app-main.with-sidebar {

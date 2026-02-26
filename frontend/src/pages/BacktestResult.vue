@@ -27,7 +27,7 @@
       </div>
 
       <div class="summary-right">
-        <button class="btn btn-secondary" type="button" @click="goStrategies">返回策略</button>
+        <button class="btn btn-secondary" type="button" :disabled="!runSummary.strategyId" @click="goEditStrategy">返回策略</button>
         <button class="btn btn-secondary" type="button" :disabled="!runSummary.strategyId" @click="goHistory">
           历史回测
         </button>

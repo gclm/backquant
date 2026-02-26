@@ -50,15 +50,17 @@
                     @change="toggleSelectAllOnPage($event)"
                   >
                 </th>
-                <th style="width: 30%">名称</th>
-                <th style="width: 20%">创建时间</th>
-                <th style="width: 20%">最后修改</th>
-                <th style="width: 25%">操作</th>
+                <th style="width: 5%">序号</th>
+                <th style="width: 28%">名称</th>
+                <th style="width: 18%">创建时间</th>
+                <th style="width: 18%">最后修改</th>
+                <th style="width: 21%">操作</th>
               </tr>
             </thead>
             <tbody>
               <tr v-if="editingNewRow" class="new-row">
                 <td class="row-select-cell"></td>
+                <td></td>
                 <td class="mono">
                   <input
                     ref="newStrategyInput"
@@ -78,12 +80,12 @@
                 </td>
               </tr>
               <tr v-if="!pagedRows.length && !editingNewRow">
-                <td colspan="5" class="empty-cell">
+                <td colspan="6" class="empty-cell">
                   {{ loading ? '加载中...' : '暂无策略（可点击"新建策略"）' }}
                 </td>
               </tr>
               <tr
-                v-for="row in pagedRows"
+                v-for="(row, index) in pagedRows"
                 :key="row.id"
                 class="data-row"
                 :class="{ 'is-selected': isRowSelected(row.id) }"
@@ -99,6 +101,7 @@
                     @change="toggleRowSelection(row.id, $event.target.checked)"
                   >
                 </td>
+                <td>{{ (currentPage - 1) * pageSize + index + 1 }}</td>
                 <td class="mono">
                   <button class="link-btn" type="button" @click.stop="goEdit(row.id)">
                     {{ row.id }}
@@ -478,42 +481,30 @@ export default {
       this.editingNewRow = false;
 
       // 创建策略记录，带RQAlpha模板代码
-      const templateCode = `# -*- coding: utf-8 -*-
-# 策略名称: ${id}
-# 创建时间: ${new Date().toLocaleString('zh-CN')}
+      const templateCode = `from rqalpha.api import *
+
 
 def init(context):
-    """
-    初始化函数，在策略启动时调用一次
-    context: 策略上下文对象
-    """
-    # 设置基准
-    context.benchmark = '000300.XSHG'
+    # 只订阅一只股票（示例：平安银行）
+    context.s1 = "000001.XSHE"
 
-    # 设置股票池
-    context.stocks = ['000001.XSHE', '600000.XSHG']
 
-    # 打印日志
-    logger.info('策略初始化完成')
+def before_trading(context):
+    # 每天开盘前会调用一次
+    pass
 
 
 def handle_bar(context, bar_dict):
-    """
-    每个交易周期调用一次
-    context: 策略上下文对象
-    bar_dict: 当前的市场数据字典
-    """
-    # 获取当前持仓
-    positions = context.portfolio.positions
+    pos = get_position(context.s1)
+    # 每个 bar（取决于你设置的频率）都会调用
+    # 最简单逻辑：如果没有持仓，就买 100 股
+    if pos.quantity == 0:
+        order_target_percent(context.s1, 1.0)
 
-    # 示例：简单的买入逻辑
-    for stock in context.stocks:
-        if stock not in positions:
-            # 如果没有持仓，买入（每只股票占总资金的比例）
-            order_target_percent(stock, 1.0 / len(context.stocks))
 
-    # 打印当前组合价值
-    logger.info('组合总值: {}'.format(context.portfolio.total_value))
+def after_trading(context):
+    # 每天收盘后会调用一次
+    pass
 `;
 
       try {
@@ -675,12 +666,18 @@ def handle_bar(context, bar_dict):
   display: flex;
   flex-direction: column;
   gap: 0;
+  flex: 1;
+  min-height: 0;
 }
 
 .page-container {
   background: #fff;
   border: 1px solid #e0e0e0;
   border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
 .page-header {
@@ -750,6 +747,16 @@ def handle_bar(context, bar_dict):
 
 .page-body {
   padding: 0;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.table-scroll {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
 }
 
 .inline-error {
@@ -760,10 +767,6 @@ def handle_bar(context, bar_dict):
   border-radius: 2px;
   margin: 12px 16px;
   font-size: 12px;
-}
-
-.table-scroll {
-  overflow: auto;
 }
 
 .table {
@@ -966,6 +969,7 @@ def handle_bar(context, bar_dict):
   padding: 12px 16px;
   border-top: 1px solid #e0e0e0;
   background: #fafafa;
+  flex-shrink: 0;
 }
 
 .pager-meta {

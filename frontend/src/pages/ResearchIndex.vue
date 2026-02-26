@@ -46,17 +46,19 @@
                     @click.stop
                   >
                 </th>
-                <th style="width: 24%">研究名称</th>
-                <th style="width: 14%">会话状态</th>
-                <th style="width: 14%">创建时间</th>
-                <th style="width: 14%">最后修改</th>
-                <th style="width: 14%">研究 ID</th>
+                <th style="width: 5%">序号</th>
+                <th style="width: 22%">研究名称</th>
+                <th style="width: 12%">会话状态</th>
+                <th style="width: 12%">创建时间</th>
+                <th style="width: 12%">最后修改</th>
+                <th style="width: 12%">研究 ID</th>
                 <th style="width: 20%">操作</th>
               </tr>
             </thead>
             <tbody>
               <tr v-if="editingNewRow" class="new-row">
                 <td class="center"></td>
+                <td></td>
                 <td>
                   <input
                     ref="newResearchInput"
@@ -76,12 +78,12 @@
                 </td>
               </tr>
               <tr v-if="!pagedRows.length && !editingNewRow">
-                <td colspan="7" class="empty-cell">
+                <td colspan="8" class="empty-cell">
                   {{ loading ? '加载中...' : '暂无研究（可点击"新建研究"）' }}
                 </td>
               </tr>
               <tr
-                v-for="row in pagedRows"
+                v-for="(row, index) in pagedRows"
                 :key="row.id"
                 class="data-row"
                 @click="handleRowClick(row)"
@@ -93,6 +95,7 @@
                     @change="toggleRowSelection(row.id, $event)"
                   >
                 </td>
+                <td>{{ (currentPage - 1) * pageSize + index + 1 }}</td>
                 <td>{{ row.title || '-' }}</td>
                 <td>
                   <span
@@ -941,12 +944,18 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 0;
+  flex: 1;
+  min-height: 0;
 }
 
 .page-container {
   background: #fff;
   border: 1px solid #e0e0e0;
   border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
 .page-header {
@@ -991,6 +1000,16 @@ export default {
 
 .page-body {
   padding: 0;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.table-scroll {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
 }
 
 .text-input {
@@ -1021,10 +1040,6 @@ export default {
   border-radius: 2px;
   margin: 12px 16px;
   font-size: 12px;
-}
-
-.table-scroll {
-  overflow: auto;
 }
 
 .table {
@@ -1140,6 +1155,7 @@ export default {
   padding: 12px 16px;
   border-top: 1px solid #e0e0e0;
   background: #fafafa;
+  flex-shrink: 0;
 }
 
 .pager-meta {
