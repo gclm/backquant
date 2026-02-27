@@ -57,31 +57,26 @@ def do_full_download(task_id: str):
     """Execute full download task using rqalpha download-bundle command."""
     from app.market_data.task_manager import get_task_manager
     from app.market_data.analyzer import analyze_bundle
+    import tempfile
+    import shutil
 
     tm = get_task_manager()
     bundle_path = Path(os.environ.get('RQALPHA_BUNDLE_PATH', '/data/rqalpha/bundle'))
     db_path = Path(__file__).parent.parent.parent / "data" / "market_data.sqlite3"
+    temp_dir = None
 
     try:
-        # Clear existing bundle directory
+        # Use temporary directory for download (similar to docker-entrypoint.sh)
         tm.update_progress(task_id, 0, 'download', '准备下载环境...')
-        tm.log(task_id, 'INFO', f'清理现有 bundle 目录: {bundle_path}')
+        temp_dir = tempfile.mkdtemp(prefix='rqalpha-bundle-')
+        tm.log(task_id, 'INFO', f'使用临时目录: {temp_dir}')
 
-        if bundle_path.exists():
-            import shutil
-            shutil.rmtree(bundle_path)
-        bundle_path.mkdir(parents=True, exist_ok=True)
-
-        # Use rqalpha download-bundle command
+        # Download to temporary directory
         tm.update_progress(task_id, 10, 'download', '开始下载数据包...')
         tm.log(task_id, 'INFO', '使用 rqalpha download-bundle 命令下载')
 
-        # Determine bundle parent directory
-        bundle_parent = bundle_path.parent
-
-        cmd = ['rqalpha', 'download-bundle', '-d', str(bundle_parent)]
+        cmd = ['rqalpha', 'download-bundle', '-d', temp_dir]
         env = os.environ.copy()
-        env['RQALPHA_BUNDLE_PATH'] = str(bundle_path)
 
         process = subprocess.Popen(
             cmd, env=env,
@@ -98,12 +93,39 @@ def do_full_download(task_id: str):
                 if 'Downloading' in line or 'downloading' in line:
                     tm.update_progress(task_id, 50, 'download', '正在下载数据包...')
                 elif 'Extracting' in line or 'extracting' in line:
-                    tm.update_progress(task_id, 80, 'download', '正在解压数据包...')
+                    tm.update_progress(task_id, 70, 'download', '正在解压数据包...')
 
         process.wait()
 
         if process.returncode != 0:
             raise RuntimeError(f'rqalpha download-bundle 失败，退出码: {process.returncode}')
+
+        # Copy from temp directory to target bundle path
+        tm.update_progress(task_id, 80, 'download', '正在复制数据...')
+        temp_bundle = Path(temp_dir) / 'bundle'
+
+        if not temp_bundle.exists():
+            raise RuntimeError(f'下载的 bundle 目录不存在: {temp_bundle}')
+
+        # Clear target directory contents
+        tm.log(task_id, 'INFO', f'清理目标目录: {bundle_path}')
+        if bundle_path.exists():
+            for item in bundle_path.iterdir():
+                if item.is_dir():
+                    shutil.rmtree(item)
+                else:
+                    item.unlink()
+        else:
+            bundle_path.mkdir(parents=True, exist_ok=True)
+
+        # Copy files from temp to target
+        tm.log(task_id, 'INFO', f'复制文件到: {bundle_path}')
+        for item in temp_bundle.iterdir():
+            dest = bundle_path / item.name
+            if item.is_dir():
+                shutil.copytree(item, dest, dirs_exist_ok=True)
+            else:
+                shutil.copy2(item, dest)
 
         tm.update_progress(task_id, 100, 'download', '下载完成')
         tm.log(task_id, 'INFO', '数据包下载完成')
@@ -118,3 +140,11 @@ def do_full_download(task_id: str):
     except Exception as e:
         tm.log(task_id, 'ERROR', f'全量下载失败: {str(e)}')
         raise
+    finally:
+        # Clean up temporary directory
+        if temp_dir and Path(temp_dir).exists():
+            try:
+                shutil.rmtree(temp_dir)
+                tm.log(task_id, 'INFO', f'已清理临时目录: {temp_dir}')
+            except Exception as e:
+                tm.log(task_id, 'WARNING', f'清理临时目录失败: {str(e)}')
