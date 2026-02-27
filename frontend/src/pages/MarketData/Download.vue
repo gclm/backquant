@@ -57,7 +57,29 @@ export default {
       hasRunningTask: false
     };
   },
+  mounted() {
+    this.checkRunningTask();
+  },
   methods: {
+    async checkRunningTask() {
+      try {
+        const response = await fetch('/api/market-data/tasks/running', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.task && ['pending', 'running'].includes(data.task.status)) {
+            this.currentTaskId = data.task.task_id;
+            this.hasRunningTask = true;
+          }
+        }
+      } catch (err) {
+        console.error('Failed to check running task:', err);
+      }
+    },
     async triggerIncremental() {
       try {
         const response = await fetch('/api/market-data/download/incremental', {

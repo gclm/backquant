@@ -126,6 +126,23 @@ def trigger_full():
         return jsonify({'error': str(e)}), 500
 
 
+@bp_market_data.route('/tasks/running', methods=['GET'])
+@auth_required
+def get_running_task():
+    """Get currently running task."""
+    try:
+        tm = get_task_manager()
+        task = tm.get_running_task()
+
+        if not task:
+            return jsonify({'task': None}), 200
+
+        return jsonify({'task': task}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @bp_market_data.route('/tasks/<task_id>', methods=['GET'])
 @auth_required
 def get_task_status(task_id: str):

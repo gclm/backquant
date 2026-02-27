@@ -141,6 +141,20 @@ class TaskManager:
         conn.close()
         return dict(row) if row else None
 
+    def get_running_task(self) -> Optional[dict]:
+        """Get currently running or pending task."""
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.execute(
+            """SELECT * FROM market_data_tasks
+               WHERE status IN ('pending', 'running')
+               ORDER BY created_at DESC
+               LIMIT 1"""
+        )
+        row = cursor.fetchone()
+        conn.close()
+        return dict(row) if row else None
+
 
 # Global singleton
 _task_manager: Optional[TaskManager] = None
