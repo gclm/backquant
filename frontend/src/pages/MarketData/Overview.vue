@@ -98,8 +98,13 @@
                 </div>
                 <div v-else class="files-list">
                   <div v-for="(file, index) in files" :key="index" class="file-item">
-                    <div class="file-name">{{ file.file_name }}</div>
-                    <div class="file-size">{{ formatSize(file.file_size) }}</div>
+                    <div class="file-info">
+                      <div class="file-name">{{ file.file_name }}</div>
+                      <div class="file-meta">
+                        <span class="file-size">{{ formatSize(file.file_size) }}</span>
+                        <span class="file-modified">{{ formatFileDate(file.modified_at) }}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -319,6 +324,27 @@ export default {
     formatNumber(num) {
       if (!num) return '0';
       return num.toLocaleString('zh-CN');
+    },
+    formatFileDate(dateStr) {
+      if (!dateStr) return '-';
+      const date = new Date(dateStr);
+      const now = new Date();
+      const diff = now - date;
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+      if (days === 0) {
+        return '今天';
+      } else if (days === 1) {
+        return '昨天';
+      } else if (days < 7) {
+        return `${days}天前`;
+      } else if (days < 30) {
+        return `${Math.floor(days / 7)}周前`;
+      } else if (days < 365) {
+        return `${Math.floor(days / 30)}月前`;
+      } else {
+        return date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+      }
     }
   }
 };
@@ -480,32 +506,41 @@ export default {
 }
 
 .file-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 6px 8px;
+  padding: 8px;
   border-bottom: 1px solid #f0f0f0;
-  font-size: 11px;
 }
 
 .file-item:last-child {
   border-bottom: none;
 }
 
+.file-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .file-name {
-  flex: 1;
   color: #000;
+  font-size: 11px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  margin-right: 8px;
+}
+
+.file-meta {
+  display: flex;
+  gap: 8px;
+  font-size: 10px;
 }
 
 .file-size {
-  flex-shrink: 0;
   color: #666;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 10px;
+}
+
+.file-modified {
+  color: #999;
 }
 
 .data-table {
