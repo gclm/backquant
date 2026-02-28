@@ -58,7 +58,7 @@ export default {
       logs: [],
       logsLoading: false,
       currentPage: 1,
-      pageSize: 50,
+      pageSize: 10,
       total: 0
     };
   },
