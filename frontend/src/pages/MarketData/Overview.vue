@@ -512,6 +512,7 @@ export default {
   flex: 1 1 350px;
   min-width: 350px;
   max-width: 450px;
+  min-height: 420px;
   padding: 16px;
   background: #fafafa;
   border: 1px solid #e0e0e0;
@@ -521,6 +522,7 @@ export default {
 .chart-wrapper {
   flex: 1 1 400px;
   min-width: 400px;
+  min-height: 420px;
   padding: 16px;
   background: #fafafa;
   border: 1px solid #e0e0e0;
@@ -531,6 +533,7 @@ export default {
   flex: 1 1 450px;
   min-width: 450px;
   max-width: 650px;
+  min-height: 420px;
   padding: 16px;
   background: #fafafa;
   border: 1px solid #e0e0e0;
