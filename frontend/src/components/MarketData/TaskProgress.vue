@@ -8,7 +8,7 @@
       <div class="modal-body">
         <div v-if="task.status" class="progress-info">
           <template v-if="isDownloadTask">
-            <span class="info-label">阶段（总共两个阶段）:</span>
+            <span class="info-label">阶段（总共三个阶段）:</span>
             <span class="info-value">{{ stageLabel }}</span>
           </template>
           <span class="info-label">进度:</span>
@@ -52,7 +52,12 @@ export default {
       const stages = {
         download: '下载',
         unzip: '解压',
-        analyze: '分析'
+        analyze: '分析',
+        '一、下载': '一、下载',
+        '二、解压': '二、解压',
+        '三、复制': '三、复制',
+        '准备': '准备',
+        '完成': '完成'
       };
       return stages[this.task.stage] || this.task.stage;
     },

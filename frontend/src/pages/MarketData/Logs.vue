@@ -36,6 +36,15 @@
             </tbody>
           </table>
         </div>
+        <div v-if="!logsLoading && logs.length > 0" class="pagination">
+          <button @click="prevPage" :disabled="currentPage === 1" class="btn btn-secondary btn-mini">
+            上一页
+          </button>
+          <span class="page-info">第 {{ currentPage }} / {{ totalPages }} 页（共 {{ total }} 条）</span>
+          <button @click="nextPage" :disabled="currentPage >= totalPages" class="btn btn-secondary btn-mini">
+            下一页
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -47,8 +56,16 @@ export default {
   data() {
     return {
       logs: [],
-      logsLoading: false
+      logsLoading: false,
+      currentPage: 1,
+      pageSize: 50,
+      total: 0
     };
+  },
+  computed: {
+    totalPages() {
+      return Math.ceil(this.total / this.pageSize);
+    }
   },
   mounted() {
     this.loadLogs();
@@ -58,7 +75,8 @@ export default {
       this.logsLoading = true;
 
       try {
-        const response = await fetch('/api/market-data/logs?limit=100', {
+        const offset = (this.currentPage - 1) * this.pageSize;
+        const response = await fetch(`/api/market-data/logs?limit=${this.pageSize}&offset=${offset}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
@@ -67,12 +85,25 @@ export default {
         if (response.ok) {
           const data = await response.json();
           this.logs = data.logs;
+          this.total = data.total;
         }
       } catch (err) {
         console.error('Failed to load logs:', err);
       } finally {
         this.logsLoading = false;
       }
+    },
+    goToPage(page) {
+      if (page >= 1 && page <= this.totalPages) {
+        this.currentPage = page;
+        this.loadLogs();
+      }
+    },
+    prevPage() {
+      this.goToPage(this.currentPage - 1);
+    },
+    nextPage() {
+      this.goToPage(this.currentPage + 1);
     },
     formatDate(dateStr) {
       if (!dateStr) return '-';
@@ -236,5 +267,20 @@ export default {
 .btn-mini {
   padding: 4px 8px;
   font-size: 12px;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-top: 1px solid #e0e0e0;
+  background: #fafafa;
+}
+
+.page-info {
+  font-size: 12px;
+  color: #666;
 }
 </style>

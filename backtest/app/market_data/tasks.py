@@ -230,6 +230,10 @@ def do_full_download(task_id: str):
         tm.update_progress(task_id, 100, '二、解压', f'解压完成: {total_copy_size/(1024*1024):.1f}MB')
         tm.log(task_id, 'INFO', f'阶段二：解压完成，数据大小 {total_copy_size/(1024*1024):.1f}MB')
 
+        # Phase 3: Copy files to target
+        tm.log(task_id, 'INFO', '阶段三：开始复制文件到目标位置')
+        tm.update_progress(task_id, 98, '三、复制', '正在复制文件到目标位置...')
+
         # Clear target directory contents
         if bundle_path.exists():
             for item in bundle_path.iterdir():
@@ -248,6 +252,7 @@ def do_full_download(task_id: str):
             else:
                 shutil.copy2(item, dest)
 
+        tm.log(task_id, 'INFO', '阶段三：复制完成')
         tm.update_progress(task_id, 100, '完成', '下载完成，准备分析数据...')
         tm.log(task_id, 'INFO', '全量下载任务完成')
 
