@@ -23,8 +23,28 @@ sudo curl -fsSL https://get.docker.com | sh
 
 ### 安装与启动（Docker Compose）
 
-Docker Compose 默认使用 named volume 持久化 RQAlpha bundle（`rqalpha_bundle`）。下载逻辑在容器 entrypoint 内完成：
-首次启动会下载到 `/data/rqalpha/bundle`，之后复用同一 volume，不会重复下载。
+Docker Compose 默认使用 named volume 持久化所有数据，下载逻辑在容器 entrypoint 内完成：
+首次启动会下载行情数据到 `/data/rqalpha/bundle`，之后复用同一 volume，不会重复下载。
+
+### Docker Volume 数据持久化
+
+所有重要数据均存储在 Docker named volume 中，**重建镜像、升级、重启容器均不会丢失数据**：
+
+| Volume 名称 | 挂载路径 | 存储内容 |
+|------------|---------|---------|
+| `mariadb_data` | MariaDB `/var/lib/mysql` | 数据库（用户、市场任务、回测元数据等） |
+| `backtest_data` | 容器 `/data/backtest` | 回测结果、策略文件、日志 |
+| `rqalpha_bundle` | 容器 `/data/rqalpha/bundle` | RQAlpha 行情数据包 |
+| `notebooks` | 容器 `/data/notebooks` | Jupyter Notebook 文件 |
+
+**常用操作对数据的影响：**
+
+```bash
+docker compose build          # ✅ 安全：只重建镜像，volume 不受影响
+docker compose up -d          # ✅ 安全：容器重建时 volume 自动重新挂载
+docker compose down           # ✅ 安全：停止并删除容器，volume 保留
+docker compose down -v        # ⚠️ 危险：会同时删除所有 volume，数据永久丢失
+```
 
 ```bash
 cp .env.example .env
@@ -61,7 +81,6 @@ docker compose up --build -d
 - `SECRET_KEY` JWT 签名密钥，必须修改
 - `LOCAL_AUTH_MOBILE` / `LOCAL_AUTH_PASSWORD` 默认管理员用户名/密码（首次初始化写入数据库）
 - `LOCAL_AUTH_PASSWORD_HASH` 可选，bcrypt hash 优先级高于明文密码
-- `AUTH_DB_PATH` 可选，认证数据库路径（默认 `<BACKTEST_BASE_DIR>/auth.sqlite3`）
 - `RESEARCH_NOTEBOOK_*` Jupyter 相关配置
 - 说明：Jupyter token 可不设置（空值表示不启用 token 鉴权，仅建议用于内网/本机）。
 

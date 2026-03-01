@@ -41,7 +41,7 @@ services:
       RESEARCH_NOTEBOOK_API_TOKEN: ${JUPYTER_TOKEN:-}
       RESEARCH_PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
       # Database configuration (default: sqlite, set to mariadb to enable)
-      DB_TYPE: ${DB_TYPE:-sqlite}
+      DB_TYPE: ${DB_TYPE:-mariadb}
       DB_HOST: ${DB_HOST:-mariadb}
       DB_PORT: ${DB_PORT:-3306}
       DB_NAME: ${DB_NAME:-backquant}
