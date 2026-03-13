@@ -278,4 +278,18 @@ else
   setup_cron
 fi
 
+# Generate VnPy vt_setting.json from environment variables
+mkdir -p /root/.vntrader
+cat > /root/.vntrader/vt_setting.json <<VTEOF
+{
+  "database.timezone": "${DB_TIMEZONE:-Asia/Shanghai}",
+  "database.name": "mysql",
+  "database.host": "${DB_HOST:-mariadb}",
+  "database.port": ${DB_PORT:-3306},
+  "database.database": "${DB_NAME:-backquant}",
+  "database.user": "${DB_USER:-backquant_user}",
+  "database.password": "${DB_PASSWORD:-backquant_pass}"
+}
+VTEOF
+
 exec "$@"
