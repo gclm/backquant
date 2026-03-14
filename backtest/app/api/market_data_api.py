@@ -385,33 +385,44 @@ def _refresh_vnpy_stats_to_db(config_dict=None):
     table = os.environ.get('DB_TABLE', 'dbbardata')
 
     with get_db_connection(config_dict=config_dict) as db:
-        # Single scan: get all stats + per-exchange breakdown in one query
-        by_exchange = db.fetchall(
-            f"SELECT exchange, COUNT(DISTINCT symbol) AS contracts, COUNT(*) AS `rows`, "
-            f"MIN(datetime) AS min_dt, MAX(datetime) AS max_dt "
-            f"FROM {table} GROUP BY exchange ORDER BY `rows` DESC"
-        )
+        lock_acquired = False
+        try:
+            if db.config.db_type == 'mariadb':
+                row = db.fetchone("SELECT GET_LOCK(?, ?) AS got", ("vnpy_stats_refresh", 10))
+                lock_acquired = bool(row and row.get("got") == 1)
+                if not lock_acquired:
+                    raise RuntimeError("刷新统计正在进行中，请稍后重试")
 
-        total_rows = sum(r['rows'] for r in by_exchange)
-        contract_count = sum(r['contracts'] for r in by_exchange)
-        exchange_count = len(by_exchange)
-        min_date = min((str(r['min_dt']) for r in by_exchange if r['min_dt']), default=None)
-        max_date = max((str(r['max_dt']) for r in by_exchange if r['max_dt']), default=None)
+            # Single scan: get all stats + per-exchange breakdown in one query
+            by_exchange = db.fetchall(
+                f"SELECT exchange, COUNT(DISTINCT symbol) AS contracts, COUNT(*) AS `rows`, "
+                f"MIN(datetime) AS min_dt, MAX(datetime) AS max_dt "
+                f"FROM {table} GROUP BY exchange ORDER BY `rows` DESC"
+            )
 
-        # Strip min_dt/max_dt from per-exchange results before caching
-        by_exchange_out = [
-            {'exchange': r['exchange'], 'contracts': r['contracts'], 'rows': r['rows']}
-            for r in by_exchange
-        ]
+            total_rows = sum(r['rows'] for r in by_exchange)
+            contract_count = sum(r['contracts'] for r in by_exchange)
+            exchange_count = len(by_exchange)
+            min_date = min((str(r['min_dt']) for r in by_exchange if r['min_dt']), default=None)
+            max_date = max((str(r['max_dt']) for r in by_exchange if r['max_dt']), default=None)
 
-        # Write to vnpy_stats cache
-        db.execute("DELETE FROM vnpy_stats WHERE id = 1")
-        db.execute(
-            "INSERT INTO vnpy_stats (id, total_rows, contract_count, exchange_count, "
-            "min_date, max_date, by_exchange) VALUES (1, ?, ?, ?, ?, ?, ?)",
-            (total_rows, contract_count, exchange_count,
-             min_date, max_date, json.dumps(by_exchange_out))
-        )
+            # Strip min_dt/max_dt from per-exchange results before caching
+            by_exchange_out = [
+                {'exchange': r['exchange'], 'contracts': r['contracts'], 'rows': r['rows']}
+                for r in by_exchange
+            ]
+
+            # Write to vnpy_stats cache (id=1), safe for concurrent refreshes
+            db.upsert(
+                "vnpy_stats",
+                ["id", "total_rows", "contract_count", "exchange_count", "min_date", "max_date", "by_exchange"],
+                (1, total_rows, contract_count, exchange_count, min_date, max_date, json.dumps(by_exchange_out)),
+                "id",
+                ["total_rows", "contract_count", "exchange_count", "min_date", "max_date", "by_exchange"],
+            )
+        finally:
+            if db.config.db_type == 'mariadb' and lock_acquired:
+                db.execute("SELECT RELEASE_LOCK(?)", ("vnpy_stats_refresh",))
 
     return {
         'total_rows': total_rows,
