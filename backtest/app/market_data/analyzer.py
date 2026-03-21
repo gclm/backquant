@@ -43,6 +43,41 @@ def analyze_bundle(task_id: str, bundle_path: Path, db_config_dict: dict):
         raise
 
 
+def ensure_bundle_analysis_task(bundle_path: Path, db_config_dict: dict | None = None) -> str | None:
+    """Queue a bundle analysis task if the bundle is ready but not yet analyzed."""
+    from app.market_data.task_manager import get_task_manager
+
+    tm = get_task_manager()
+    config_dict = db_config_dict or tm.db_config_dict
+
+    if not bundle_path.exists() or not bundle_path.is_dir():
+        return None
+
+    with get_db_connection(config_dict=config_dict) as db:
+        existing_task = db.fetchone(
+            """SELECT task_id FROM market_data_tasks
+               WHERE status IN ('pending', 'running') AND task_type = 'analyze'
+               ORDER BY created_at DESC
+               LIMIT 1"""
+        )
+        if existing_task:
+            return None
+
+        row = db.fetchone(
+            "SELECT bundle_path, total_files, analyzed_at FROM market_data_stats WHERE id = 1"
+        )
+
+    if row and row.get('bundle_path') == str(bundle_path) and (row.get('total_files') or 0) > 0:
+        return None
+
+    return tm.submit_task(
+        'analyze',
+        analyze_bundle,
+        task_args=(bundle_path, config_dict),
+        source='auto',
+    )
+
+
 def _scan_files(bundle_path: Path) -> Dict:
     """Scan files and collect statistics."""
     total_files = 0

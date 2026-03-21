@@ -7,6 +7,7 @@ from flask import Blueprint, current_app, jsonify, request
 
 from app.auth import generate_auth_token
 from app.api.system_api import bundle_status as _bundle_status
+from app.market_data.analyzer import ensure_bundle_analysis_task
 from app.database import DatabaseConnection, get_db_connection
 
 bp_login = Blueprint("bp_login", __name__)
@@ -176,4 +177,8 @@ def api_login():
             "bundle_status": status_payload or {},
         }
         return jsonify(payload), 200
+    try:
+        ensure_bundle_analysis_task(bundle_path)
+    except Exception:
+        current_app.logger.exception("failed to auto-trigger bundle analysis after login")
     return _db_login(username, password)

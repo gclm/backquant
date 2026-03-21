@@ -129,12 +129,16 @@ function toAbsoluteUrl(rawUrl) {
     return '';
   }
 
-  raw = raw.replace(/^https?:\/\/(localhost|127\.0\.0\.1):8088\/jupyter\/?/i, '/jupyter/');
-  raw = raw.replace(/^https?:\/\/(localhost|127\.0\.0\.1):8088\/?/i, '/');
-
   try {
     if (typeof window !== 'undefined' && window.location) {
-      return new URL(raw, window.location.origin).toString();
+      const url = new URL(raw, window.location.origin);
+      if (/^(localhost|127\.0\.0\.1)$/i.test(url.hostname)) {
+        return new URL(`${url.pathname}${url.search}${url.hash}`, window.location.origin).toString();
+      }
+      if (/^(jupyter|backend)$/i.test(url.hostname)) {
+        return new URL(`${url.pathname}${url.search}${url.hash}`, window.location.origin).toString();
+      }
+      return url.toString();
     }
     return new URL(raw).toString();
   } catch (error) {

@@ -8,6 +8,7 @@ from datetime import datetime
 from pathlib import Path
 
 from flask import Blueprint, current_app, jsonify
+from app.market_data.analyzer import ensure_bundle_analysis_task
 
 bp_system = Blueprint("bp_system", __name__, url_prefix="/api/system")
 
@@ -192,6 +193,10 @@ def bundle_status():
         size_path = bundle_path
         if status_payload is None or str(status_payload.get("status") or "").strip().lower() != "ready":
             _write_bundle_status(status="ready", work_dir="", message="bundle ready")
+        try:
+            ensure_bundle_analysis_task(bundle_path)
+        except Exception:
+            current_app.logger.exception("failed to auto-trigger bundle analysis")
     else:
         size_path = Path(work_dir) if work_dir else bundle_path
         if not size_path.exists():

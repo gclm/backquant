@@ -790,7 +790,7 @@ def _delete_notebook_file(*, notebook_path: str, session: dict | None = None) ->
 
 def _build_notebook_url(*, notebook_path: str, session_token: str) -> str:
     safe_path = quote(notebook_path.lstrip("/"), safe="/@._-~")
-    return f"{_host_base_url()}{_proxy_base_path()}/lab/tree/{safe_path}?token={session_token}"
+    return f"{_proxy_base_path()}/lab/tree/{safe_path}?token={session_token}"
 
 
 def _notebook_root_dir() -> Path:
