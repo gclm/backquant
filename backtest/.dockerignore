@@ -17,6 +17,7 @@ env/
 
 .jupyter/
 .gunicorn/
+gunicorn.ctl
 research/notebooks/
 .ipynb_checkpoints/
 

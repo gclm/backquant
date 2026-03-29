@@ -88,6 +88,13 @@ services:
       JUPYTER_TOKEN: ${JUPYTER_TOKEN:-}
       RQALPHA_BUNDLE_BOOTSTRAP: "0"
       RQALPHA_BUNDLE_CRON: "off"
+      DB_TYPE: ${DB_TYPE:-mariadb}
+      DB_HOST: ${DB_HOST:-mariadb}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_NAME: ${DB_NAME:-backquant}
+      DB_USER: ${DB_USER:-backquant_user}
+      DB_PASSWORD: ${DB_PASSWORD:-backquant_pass}
+      DB_TABLE: ${DB_TABLE:-dbbardata}
     command: >
       jupyter lab --ip=0.0.0.0 --port=8888 --no-browser
       --allow-root
